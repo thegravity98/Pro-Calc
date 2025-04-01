@@ -31,7 +31,8 @@ dependencies:
   fluentui_system_icons: ^1.1.223
   flutter:
     sdk: flutter
-  function_tree: ^0.9.1
+  math_expressions: ^2.7.0
+  #function_tree: ^0.9.1
   test_api: ^0.7.3
 
 dev_dependencies:

@@ -23,7 +23,7 @@ class BottomBar extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Padding(
               padding: EdgeInsets.all(4),
-              child: Icon(FluentIcons.history_24_regular),
+              child: Icon(FluentIcons.home_24_regular),
             ),
             label: '',
           ),
