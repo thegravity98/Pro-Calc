@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:pro_calc/Components/bottom_bar.dart';
 import 'package:pro_calc/Pages/calc_page.dart';
-import 'package:pro_calc/Pages/history_page.dart';
 import 'package:pro_calc/Pages/settings_page.dart';
 import 'package:pro_calc/Pages/tools_page.dart';
 
@@ -24,7 +23,6 @@ class ProCalc extends StatefulWidget {
 class _ProCalcState extends State<ProCalc> {
   final List<Widget> _tabs = [
     const CalcPage(),
-    const HistoryPage(),
     const ToolsPage(),
     const SettingsPage(),
   ];
