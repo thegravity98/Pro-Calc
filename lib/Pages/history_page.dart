@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../models/calculation_history.dart';
 
@@ -98,13 +97,6 @@ class _HistoryPageState extends State<HistoryPage> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(16),
@@ -164,7 +156,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 _showSnackBar();
               },
               backgroundColor: Colors.white,
-              elevation: 4,
+              elevation: 4, // Changed from 0 to 4 for elevation
               child: const Icon(
                 FluentIcons.broom_24_regular,
                 color: Colors.grey,

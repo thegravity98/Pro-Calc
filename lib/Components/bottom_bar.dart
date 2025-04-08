@@ -14,30 +14,45 @@ class BottomBar extends StatelessWidget {
     return CupertinoTabScaffold(
       tabBar: CupertinoTabBar(
         backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-        height: 40.0,
+        height: 60.0, // Increased from 40.0 to 60.0
         border: Border.all(
           color: const Color.fromARGB(255, 255, 255, 255),
           width: 0,
         ),
         items: const [
           BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.all(4),
-              child: Icon(FluentIcons.calculator_24_regular),
+            icon: SizedBox(
+              height: 60,
+              child: Center(
+                child: Icon(
+                  FluentIcons.calculator_24_regular,
+                  size: 28,
+                ),
+              ),
             ),
             label: '',
           ),
           BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.all(4),
-              child: Icon(FluentIcons.grid_24_regular),
+            icon: SizedBox(
+              height: 60,
+              child: Center(
+                child: Icon(
+                  FluentIcons.grid_24_regular,
+                  size: 28,
+                ),
+              ),
             ),
             label: '',
           ),
           BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.all(4),
-              child: Icon(FluentIcons.settings_24_regular),
+            icon: SizedBox(
+              height: 60,
+              child: Center(
+                child: Icon(
+                  FluentIcons.settings_24_regular,
+                  size: 28,
+                ),
+              ),
             ),
             label: '',
           ),

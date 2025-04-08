@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // Keep for Colors if needed, but prefer CupertinoColors
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 class LengthConverterPage extends StatefulWidget {
@@ -15,6 +15,7 @@ class _LengthConverterPageState extends State<LengthConverterPage> {
   String _toUnit = 'Kilometers';
   String _result = '';
 
+  // Available units for conversion
   final List<String> _units = [
     'Meters',
     'Kilometers',
@@ -27,104 +28,259 @@ class _LengthConverterPageState extends State<LengthConverterPage> {
     'Nautical Miles'
   ];
 
+  // Numpad buttons (excluding 'del' which is now a tall button)
   final List<String> digitButtons = [
-    '7',
-    '8',
-    '9',
-    '4',
-    '5',
-    '6',
-    '1',
-    '2',
-    '3',
-    '0',
-    '.',
-    'del',
+    '7', '8', '9',
+    '4', '5', '6',
+    '1', '2', '3',
+    '00', '0', '.', // Rearranged slightly for a 4x3 grid
   ];
 
-  final Map<String, double> _conversionRatesToMeters = {
+  // Conversion rates based on 1 unit = X Meters
+  // Using inverse for calculation clarity (Value / Rate = Meters)
+  final Map<String, double> _conversionRatesFromMeters = {
     'Meters': 1.0,
-    'Kilometers': 0.001,
-    'Centimeters': 100.0,
-    'Millimeters': 1000.0,
-    'Miles': 0.000621371,
-    'Yards': 1.09361,
-    'Feet': 3.28084,
-    'Inches': 39.3701,
-    'Nautical Miles': 0.000539957,
+    'Kilometers': 1000.0,
+    'Centimeters': 0.01,
+    'Millimeters': 0.001,
+    'Miles': 1609.34,
+    'Yards': 0.9144,
+    'Feet': 0.3048,
+    'Inches': 0.0254,
+    'Nautical Miles': 1852.0,
   };
 
+  @override
+  void initState() {
+    super.initState();
+    // Add listener to convert automatically on text change
+    _inputController.addListener(_convert);
+  }
+
+  @override
+  void dispose() {
+    _inputController.removeListener(_convert); // Clean up listener
+    _inputController.dispose();
+    super.dispose();
+  }
+
+  // --- Input & Conversion Logic ---
+
   void _handleDigitPress(String digit) {
-    final currentText = _inputController.text;
-    if (digit == 'del') {
-      if (currentText.isNotEmpty) {
-        _inputController.text =
-            currentText.substring(0, currentText.length - 1);
-      }
-    } else if (digit == '.') {
-      if (!currentText.contains('.')) {
-        _inputController.text = currentText.isEmpty ? '0.' : '$currentText.';
+    final selection = _inputController.selection;
+    final cursorPos = selection.baseOffset >= 0
+        ? selection.baseOffset
+        : _inputController.text.length;
+
+    if (digit == '.') {
+      if (!_inputController.text.contains('.')) {
+        // Insert '0.' if empty, otherwise just '.'
+        final textToInsert = _inputController.text.isEmpty ? '0.' : '.';
+        final newText = _inputController.text.substring(0, cursorPos) +
+            textToInsert +
+            _inputController.text.substring(cursorPos);
+        _inputController.value = TextEditingValue(
+          text: newText,
+          selection:
+              TextSelection.collapsed(offset: cursorPos + textToInsert.length),
+        );
       }
     } else {
-      _inputController.text = currentText + digit;
+      // Insert digit at cursor position
+      final newText = _inputController.text.substring(0, cursorPos) +
+          digit +
+          _inputController.text.substring(cursorPos);
+      _inputController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: cursorPos + digit.length),
+      );
     }
-    _convert();
+  }
+
+  void _handleBackspace() {
+    final selection = _inputController.selection;
+
+    if (selection.isCollapsed) {
+      // If cursor is not at the beginning, delete character before it
+      if (selection.start > 0) {
+        _inputController.value = _inputController.value.replaced(
+          TextRange(start: selection.start - 1, end: selection.start),
+          '',
+        );
+        // Move cursor back
+        _inputController.selection =
+            TextSelection.collapsed(offset: selection.start - 1);
+      }
+    } else {
+      // If text is selected, delete the selection
+      _inputController.value = _inputController.value.replaced(selection, '');
+      _inputController.selection =
+          TextSelection.collapsed(offset: selection.start);
+    }
+  }
+
+  void _handleACPress() {
+    _inputController.clear(); // Clears text and triggers listener -> _convert
+    // setState(() { // No longer needed here as listener handles UI update
+    //   _result = '';
+    // });
   }
 
   void _convert() {
-    if (_inputController.text.isEmpty) {
-      setState(() {
-        _result = '';
-      });
+    final String inputText = _inputController.text;
+    if (inputText.isEmpty || inputText == '0.') {
+      // Handle empty or intermediate state
+      if (_result.isNotEmpty) {
+        // Clear result only if it had a value
+        setState(() {
+          _result = '';
+        });
+      }
       return;
     }
 
     try {
-      final double inputValue = double.parse(_inputController.text);
-      final double toMeters = inputValue / _conversionRatesToMeters[_fromUnit]!;
-      final double result = toMeters * _conversionRatesToMeters[_toUnit]!;
+      final double inputValue = double.parse(inputText);
+      // Convert input value from '_fromUnit' to Meters
+      final double valueInMeters =
+          inputValue * _conversionRatesFromMeters[_fromUnit]!;
+      // Convert value in Meters to '_toUnit'
+      final double convertedValue =
+          valueInMeters / _conversionRatesFromMeters[_toUnit]!;
 
-      setState(() {
-        _result = result.toStringAsFixed(6);
-      });
+      // Use toStringAsFixed initially, then trim unnecessary trailing zeros/dots
+      String formattedResult = convertedValue.toStringAsFixed(6);
+      formattedResult = formattedResult.replaceAll(
+          RegExp(r'0+$'), ''); // Remove trailing zeros
+      formattedResult = formattedResult.replaceAll(
+          RegExp(r'\.$'), ''); // Remove trailing dot if result is integer
+
+      // Update state only if result changed to avoid unnecessary rebuilds
+      if (_result != formattedResult) {
+        setState(() {
+          _result = formattedResult;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _result = 'Invalid input';
-      });
+      // Handle cases like "." or invalid intermediate states during typing
+      if (_result != 'Invalid input') {
+        // Update only if not already showing error
+        setState(() {
+          _result = 'Invalid input';
+        });
+      }
+      debugPrint("Conversion Error: $e"); // Log error for debugging
     }
   }
 
+  // --- UI Building ---
+
   Widget _buildDigitButton(String digit) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.all(4.0),
-        child: CupertinoButton(
-          padding: EdgeInsets.zero,
-          borderRadius: BorderRadius.circular(20),
-          color: digit == 'del' ? CupertinoColors.systemGrey5 : Colors.white,
-          onPressed: () => _handleDigitPress(digit),
-          child: digit == 'del'
-              ? const Icon(
-                  FluentIcons.backspace_24_filled,
-                  size: 24,
-                  color: Color.fromARGB(255, 220, 0, 0),
-                )
-              : Text(
-                  digit,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    color: Color.fromARGB(255, 51, 51, 51),
-                  ),
-                ),
+    final scaffoldSize = MediaQuery.of(context).size;
+    // Make buttons slightly wider relative to screen width
+    final btnWidth = (scaffoldSize.width / 4.5).clamp(60.0, 80.0);
+    final btnHeight = btnWidth * 0.7; // Adjust height ratio if needed
+
+    const Color bgColor = CupertinoColors.white; // Standard digit background
+    const Color fgColor = CupertinoColors.black; // Standard digit text color
+
+    return Container(
+      width: btnWidth,
+      height: btnHeight,
+      margin: EdgeInsets.all(btnWidth * 0.04), // Adjust margin based on width
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(btnWidth * 0.25), // Adjust radius
+        color: bgColor, // Set color here for shadow effect
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.2),
+            spreadRadius: 0,
+            blurRadius: 3,
+            offset: const Offset(0, 1.5),
+          ),
+        ],
+      ),
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        borderRadius: BorderRadius.circular(btnWidth * 0.25),
+        // color: bgColor, // Color moved to Container for shadow
+        onPressed: () => _handleDigitPress(digit),
+        child: Text(
+          digit,
+          style: TextStyle(
+            // Adjust font size based on button size
+            fontSize: (digit.length > 1 ? btnHeight * 0.35 : btnHeight * 0.45),
+            color: fgColor,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _inputController.dispose();
-    super.dispose();
+  Widget _buildTallButton(String text,
+      {required VoidCallback onPressed,
+      bool isDelete = false,
+      bool isAC = false}) {
+    final scaffoldSize = MediaQuery.of(context).size;
+    final btnWidth = (scaffoldSize.width / 4.5).clamp(60.0, 80.0);
+    final digitBtnHeight = btnWidth * 0.7;
+    final vMargin = btnWidth * 0.04;
+    const rowGap = 8.0;
+
+    // Adjust height calculation to account for proper spacing
+    final double targetHeight = (digitBtnHeight * 2) + rowGap;
+
+    final Color bgColor = isAC
+        ? CupertinoColors.systemRed.withOpacity(0.8)
+        : CupertinoColors.systemGrey5;
+    final Color fgColor =
+        isAC ? CupertinoColors.white : CupertinoColors.systemRed;
+
+    return Container(
+      width: btnWidth,
+      height: targetHeight,
+      margin: EdgeInsets.all(vMargin),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(btnWidth * 0.25),
+        color: bgColor,
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.2),
+            spreadRadius: 0,
+            blurRadius: 3,
+            offset: const Offset(0, 1.5),
+          ),
+        ],
+      ),
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        borderRadius: BorderRadius.circular(btnWidth * 0.25),
+        onPressed: onPressed,
+        child: isDelete
+            ? Icon(
+                FluentIcons.backspace_24_filled,
+                size: btnWidth * 0.4,
+                color: fgColor,
+              )
+            : Text(
+                text,
+                style: TextStyle(
+                  fontSize: btnWidth * 0.35,
+                  color: fgColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+      ),
+    );
+  }
+
+  // Helper to build rows of buttons
+  Widget _buildButtonRow(List<String> buttons) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: buttons.map(_buildDigitButton).toList(),
+    );
   }
 
   @override
@@ -133,226 +289,155 @@ class _LengthConverterPageState extends State<LengthConverterPage> {
       navigationBar: const CupertinoNavigationBar(
         middle: Text('Length Converter'),
       ),
+      backgroundColor:
+          CupertinoColors.systemGroupedBackground, // Use themed background
       child: SafeArea(
         child: Column(
           children: [
+            // --- Top Conversion Area ---
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Input Field
                     CupertinoTextField(
                       controller: _inputController,
                       placeholder: 'Enter value',
+                      textAlign: TextAlign.right, // Align input text right
+                      style: const TextStyle(fontSize: 24), // Larger font
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
-                      readOnly:
-                          true, // Make it read-only since we're using digit buttons
+                      readOnly: true, // Input only via custom numpad
+                      showCursor: true, // Still show cursor
+                      cursorColor: CupertinoColors.activeBlue,
                       decoration: BoxDecoration(
-                        border: Border.all(color: CupertinoColors.systemGrey),
+                        color: CupertinoColors
+                            .tertiarySystemBackground, // Subtle background
+                        border: Border.all(color: CupertinoColors.systemGrey4),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       padding: const EdgeInsets.all(12),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+
+                    // Unit Pickers
                     Row(
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('From:',
-                                  style: TextStyle(
-                                      color: CupertinoColors.systemGrey)),
-                              const SizedBox(height: 8),
-                              CupertinoButton(
-                                padding: EdgeInsets.zero,
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: CupertinoColors.systemGrey),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(_fromUnit),
-                                      const Icon(CupertinoIcons.chevron_down),
-                                    ],
-                                  ),
-                                ),
-                                onPressed: () {
-                                  showCupertinoModalPopup(
-                                    context: context,
-                                    builder: (context) => CupertinoActionSheet(
-                                      actions: _units
-                                          .map((unit) =>
-                                              CupertinoActionSheetAction(
-                                                onPressed: () {
-                                                  setState(() {
-                                                    _fromUnit = unit;
-                                                    _convert();
-                                                  });
-                                                  Navigator.pop(context);
-                                                },
-                                                child: Text(unit),
-                                              ))
-                                          .toList(),
-                                      cancelButton: CupertinoActionSheetAction(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('Cancel'),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
+                        _buildUnitPicker(isFromUnit: true), // From Unit
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: CupertinoButton(
+                              // Swap Button
+                              padding: EdgeInsets.zero,
+                              minSize: 0,
+                              onPressed: () {
+                                setState(() {
+                                  final temp = _fromUnit;
+                                  _fromUnit = _toUnit;
+                                  _toUnit = temp;
+                                  _convert(); // Re-convert after swap
+                                });
+                              },
+                              child: const Icon(
+                                CupertinoIcons.arrow_right_arrow_left_circle,
+                                size: 28,
+                                color: CupertinoColors.activeBlue,
+                              )),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('To:',
-                                  style: TextStyle(
-                                      color: CupertinoColors.systemGrey)),
-                              const SizedBox(height: 8),
-                              CupertinoButton(
-                                padding: EdgeInsets.zero,
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: CupertinoColors.systemGrey),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(_toUnit),
-                                      const Icon(CupertinoIcons.chevron_down),
-                                    ],
-                                  ),
-                                ),
-                                onPressed: () {
-                                  showCupertinoModalPopup(
-                                    context: context,
-                                    builder: (context) => CupertinoActionSheet(
-                                      actions: _units
-                                          .map((unit) =>
-                                              CupertinoActionSheetAction(
-                                                onPressed: () {
-                                                  setState(() {
-                                                    _toUnit = unit;
-                                                    _convert();
-                                                  });
-                                                  Navigator.pop(context);
-                                                },
-                                                child: Text(unit),
-                                              ))
-                                          .toList(),
-                                      cancelButton: CupertinoActionSheetAction(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('Cancel'),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
+                        _buildUnitPicker(isFromUnit: false), // To Unit
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+
+                    // Result Display
                     if (_result.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: CupertinoColors.systemGrey6,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                            color: CupertinoColors
+                                .secondarySystemGroupedBackground, // Different background
+                            borderRadius: BorderRadius.circular(8),
+                            border:
+                                Border.all(color: CupertinoColors.systemGrey4)),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
                               'Result',
                               style: TextStyle(
-                                color: CupertinoColors.systemGrey,
-                                fontSize: 16,
+                                color: CupertinoColors.secondaryLabel,
+                                fontSize: 14,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$_result $_toUnit',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
+                            const SizedBox(height: 4),
+                            FittedBox(
+                              // Ensure result fits if very large
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                '$_result $_toUnit',
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: CupertinoColors.label,
+                                ),
+                                maxLines: 1,
                               ),
                             ),
                           ],
                         ),
-                      ),
+                      )
+                    else
+                      const Spacer(), // Pushes numpad down if no result yet
                   ],
                 ),
               ),
             ),
+
+            // --- Numpad Area ---
             Container(
-              color: CupertinoColors.systemGrey6,
-              padding: const EdgeInsets.all(16),
-              child: Column(
+              color: CupertinoColors.systemGrey6, // Numpad background
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start, // Align tops
                 children: [
-                  Row(
-                    children: digitButtons
-                        .sublist(0, 3)
-                        .map(_buildDigitButton)
-                        .toList(),
+                  // Left side: 3 columns of digit buttons (4 rows)
+                  Expanded(
+                    flex: 3, // Takes 3/4 of the width
+                    child: Column(
+                      children: [
+                        _buildButtonRow(digitButtons.sublist(0, 3)), // 7, 8, 9
+                        const SizedBox(height: rowGap),
+                        _buildButtonRow(digitButtons.sublist(3, 6)), // 4, 5, 6
+                        const SizedBox(height: rowGap),
+                        _buildButtonRow(digitButtons.sublist(6, 9)), // 1, 2, 3
+                        const SizedBox(height: rowGap),
+                        _buildButtonRow(
+                            digitButtons.sublist(9, 12)), // 00, 0, .
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: digitButtons
-                        .sublist(3, 6)
-                        .map(_buildDigitButton)
-                        .toList(),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: digitButtons
-                        .sublist(6, 9)
-                        .map(_buildDigitButton)
-                        .toList(),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: digitButtons
-                        .sublist(9, 12)
-                        .map(_buildDigitButton)
-                        .toList(),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      borderRadius: BorderRadius.circular(20),
-                      color: const Color.fromARGB(255, 220, 0, 0),
-                      onPressed: () {
-                        setState(() {
-                          _inputController.clear();
-                          _result = '';
-                        });
-                      },
-                      child: const Text(
-                        'AC',
-                        style: TextStyle(
-                          fontSize: 24,
-                          color: Colors.white,
+                  // Right side: del and AC buttons (vertically aligned)
+                  Expanded(
+                    flex: 1, // Takes 1/4 of the width
+                    child: Column(
+                      children: [
+                        _buildTallButton(
+                          'del',
+                          onPressed: _handleBackspace,
+                          isDelete: true,
                         ),
-                      ),
+                        const SizedBox(
+                            height: rowGap), // Add consistent spacing
+                        _buildTallButton(
+                          'AC',
+                          onPressed: _handleACPress,
+                          isAC: true,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -363,4 +448,80 @@ class _LengthConverterPageState extends State<LengthConverterPage> {
       ),
     );
   }
+
+  // Helper Widget for Unit Pickers to reduce repetition
+  Widget _buildUnitPicker({required bool isFromUnit}) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(isFromUnit ? 'From:' : 'To:',
+              style: const TextStyle(
+                  fontSize: 12, color: CupertinoColors.secondaryLabel)),
+          const SizedBox(height: 4),
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: CupertinoColors.tertiarySystemBackground,
+                border: Border.all(color: CupertinoColors.systemGrey4),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    // Allow text to take space and ellipsis if needed
+                    child: Text(
+                      isFromUnit ? _fromUnit : _toUnit,
+                      style: const TextStyle(color: CupertinoColors.label),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(CupertinoIcons.chevron_down,
+                      size: 16, color: CupertinoColors.secondaryLabel),
+                ],
+              ),
+            ),
+            onPressed: () => _showUnitPicker(isFromUnit: isFromUnit),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper function to show the Action Sheet for unit selection
+  void _showUnitPicker({required bool isFromUnit}) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        actions: _units
+            .map((unit) => CupertinoActionSheetAction(
+                  onPressed: () {
+                    setState(() {
+                      if (isFromUnit) {
+                        _fromUnit = unit;
+                      } else {
+                        _toUnit = unit;
+                      }
+                      _convert(); // Re-convert when unit changes
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: Text(unit),
+                ))
+            .toList(),
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(context),
+          isDefaultAction: true, // Makes Cancel visually distinct
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
 }
+
+// Define the constant row gap used in layout
+const double rowGap = 8.0;
