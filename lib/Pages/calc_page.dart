@@ -293,8 +293,9 @@ class _CalcPageState extends State<CalcPage>
       cm.bindVariable(Variable('X'), Number(variables['X'] ?? 0));
       cm.bindVariable(Variable('Y'), Number(variables['Y'] ?? 0));
 
-      Parser p = Parser();
-      Expression exp = p.parse(tempInput);
+      // Use GrammarParser for more advanced parsing capabilities
+      GrammarParser gp = GrammarParser();
+      Expression exp = gp.parse(tempInput);
       double result = exp.evaluate(EvaluationType.REAL, cm);
 
       // Format result: remove trailing .0
@@ -616,14 +617,12 @@ class _CalcPageState extends State<CalcPage>
 
   Widget buildButton(String text, double btnSize) {
     // Determine background color
-    Color buttonColor = Colors.white; // Default for digits
+    Color buttonColor = Colors.grey.shade100; // Default for digits
     if (_buttonColors.containsKey(text)) {
       buttonColor = _buttonColors[text]!;
-    } else if (RegExp(r'[+\-*/×÷%=]').hasMatch(text)) {
-      // Removed ^ from operators
-      buttonColor = Colors.grey[300]!; // Operators
-    } else if (!isDigit.hasMatch(text) && text != '.') {
-      buttonColor = const Color.fromARGB(255, 245, 245, 245); // Other functions
+    } else if (!isDigit.hasMatch(text)) {
+      buttonColor = const Color.fromRGBO(
+          235, 235, 235, 1); // All non-digit buttons including operators
     }
 
     // Determine text/icon color
@@ -722,144 +721,157 @@ class _CalcPageState extends State<CalcPage>
 
     return CupertinoPageScaffold(
       navigationBar: const CupertinoNavigationBar(
-        middle: Text('Pro Calc'),
-      ),
-      backgroundColor: CupertinoColors.systemGroupedBackground,
-      child: SafeArea(
-        bottom: true,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-          child: Column(
-            children: <Widget>[
-              // Display Area
-              Expanded(
-                flex: 3,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 12.0),
-                  margin: const EdgeInsets.only(bottom: 8.0),
-                  alignment: Alignment.bottomRight,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // History display at the top (last 3 entries)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          ...history.take(3).map((entry) => Padding(
-                                padding: const EdgeInsets.only(
-                                    bottom: 8.0), // Increased from 4.0
-                                child: Text(
-                                  "${entry.expression} = ${entry.result}",
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    color: CupertinoColors.secondaryLabel,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              )),
-                        ],
-                      ),
-
-                      // Current calculation area
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // Input field animation
-                          AnimatedBuilder(
-                            animation: _animationController,
-                            builder: (context, child) {
-                              return CupertinoTextField(
-                                controller: _inputController,
-                                readOnly: true,
-                                showCursor: true,
-                                cursorColor: CupertinoColors.activeBlue,
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontSize: _inputTextSizeAnimation.value,
-                                  color: CupertinoColors.label,
-                                ),
-                                decoration: null,
-                                maxLines: 2,
-                                minLines: 1,
-                                enableInteractiveSelection: true,
-                                onTap: () {
-                                  if (_inputController.selection.baseOffset <
-                                      0) {
-                                    _inputController.selection =
-                                        TextSelection.collapsed(
-                                            offset:
-                                                _inputController.text.length);
-                                  }
-                                },
-                              );
-                            },
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          // Answer text animation
-                          AnimatedBuilder(
-                            animation: _animationController,
-                            builder: (context, child) {
-                              return Transform.scale(
-                                scale: _animationController.value * 0.3 + 0.7,
-                                child: Text(
-                                  answer,
-                                  style: TextStyle(
-                                    fontSize: _answerTextSizeAnimation.value,
-                                    color: CupertinoColors.label,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+        middle: Padding(
+          padding: EdgeInsets.only(left: 8.0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Pro Calc',
+              style: TextStyle(
+                fontSize: 20,
+                fontFamily: 'Inter',
               ),
+            ),
+          ),
+        ),
+        border: null,
+        transitionBetweenRoutes: false,
+      ),
+      backgroundColor: const Color(0xfff3f3f3),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        child: Column(
+          children: <Widget>[
+            // Add top padding to account for navigation bar
+            SizedBox(
+                height: MediaQuery.of(context).padding.top +
+                    44), // 44 is the default nav bar height
+            // Display Area
+            Expanded(
+              flex: 3,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 12.0),
+                margin: const EdgeInsets.only(bottom: 8.0),
+                alignment: Alignment.bottomRight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // History display at the top (last 3 entries)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        ...history.take(3).map((entry) => Padding(
+                              padding: const EdgeInsets.only(
+                                  bottom: 8.0), // Increased from 4.0
+                              child: Text(
+                                "${entry.expression} = ${entry.result}",
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  color: CupertinoColors.secondaryLabel,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            )),
+                      ],
+                    ),
 
-              const SizedBox(height: 16),
-
-              // Button Grid with improved spacing
-              Expanded(
-                flex: 5,
-                child: Container(
-                  // decoration: BoxDecoration(
-                  //   color: CupertinoColors.systemBackground.withOpacity(0.5),
-                  //   borderRadius: BorderRadius.circular(16),
-                  // ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: List.generate(
-                      (stringList.length / 5).ceil(),
-                      (rowIndex) => Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: List.generate(
-                          5,
-                          (columnIndex) {
-                            final index = rowIndex * 5 + columnIndex;
-                            if (index >= stringList.length) {
-                              return SizedBox(width: btnSize);
-                            }
-                            final String buttonText = stringList[index];
-                            return buildButton(buttonText, btnSize);
+                    // Current calculation area
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Input field animation
+                        AnimatedBuilder(
+                          animation: _animationController,
+                          builder: (context, child) {
+                            return CupertinoTextField(
+                              controller: _inputController,
+                              readOnly: true,
+                              showCursor: true,
+                              cursorColor: CupertinoColors.activeBlue,
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                fontSize: _inputTextSizeAnimation.value,
+                                color: CupertinoColors.label,
+                              ),
+                              decoration: null,
+                              maxLines: 2,
+                              minLines: 1,
+                              enableInteractiveSelection: true,
+                              onTap: () {
+                                if (_inputController.selection.baseOffset < 0) {
+                                  _inputController.selection =
+                                      TextSelection.collapsed(
+                                          offset: _inputController.text.length);
+                                }
+                              },
+                            );
                           },
                         ),
+
+                        const SizedBox(height: 8),
+
+                        // Answer text animation
+                        AnimatedBuilder(
+                          animation: _animationController,
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: _animationController.value * 0.3 + 0.7,
+                              child: Text(
+                                answer,
+                                style: TextStyle(
+                                  fontSize: _answerTextSizeAnimation.value,
+                                  color: CupertinoColors.label,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Button Grid with improved spacing
+            Expanded(
+              flex: 5,
+              child: Container(
+                // decoration: BoxDecoration(
+                //   color: CupertinoColors.systemBackground.withOpacity(0.5),
+                //   borderRadius: BorderRadius.circular(16),
+                // ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(
+                    (stringList.length / 5).ceil(),
+                    (rowIndex) => Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: List.generate(
+                        5,
+                        (columnIndex) {
+                          final index = rowIndex * 5 + columnIndex;
+                          if (index >= stringList.length) {
+                            return SizedBox(width: btnSize);
+                          }
+                          final String buttonText = stringList[index];
+                          return buildButton(buttonText, btnSize);
+                        },
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

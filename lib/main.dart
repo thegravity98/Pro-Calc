@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:pro_calc/Components/bottom_bar.dart';
@@ -7,21 +8,28 @@ import 'package:pro_calc/Pages/calc_page.dart';
 import 'package:pro_calc/Pages/settings_page.dart';
 import 'package:pro_calc/Pages/tools_page.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> initializeApp() async {
+  try {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  // Set device orientation
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
-
-  // Enable high refresh rate support
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  if (Platform.isAndroid) {
-    await FlutterDisplayMode.setHighRefreshRate();
+    if (Platform.isAndroid) {
+      await FlutterDisplayMode.setHighRefreshRate();
+    }
+  } catch (e) {
+    debugPrint('Initialization error: $e');
   }
+}
 
-  runApp(const ProCalc());
+void main() async {
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    await initializeApp();
+    runApp(const ProCalc());
+  } catch (e) {
+    debugPrint('Fatal error during app startup: $e');
+    rethrow;
+  }
 }
 
 class ProCalc extends StatefulWidget {
@@ -49,10 +57,33 @@ class _ProCalcState extends State<ProCalc> {
     return SafeArea(
       child: CupertinoApp(
         theme: const CupertinoThemeData(
+          primaryColor: CupertinoColors.activeBlue,
           textTheme: CupertinoTextThemeData(
             textStyle: TextStyle(
               fontFamily: 'Inter',
               color: Color.fromARGB(255, 0, 0, 0),
+            ),
+            actionTextStyle: TextStyle(
+              fontFamily: 'Inter',
+            ),
+            tabLabelTextStyle: TextStyle(
+              fontFamily: 'Inter',
+            ),
+            navTitleTextStyle: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+            navLargeTitleTextStyle: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+            ),
+            pickerTextStyle: TextStyle(
+              fontFamily: 'Inter',
+            ),
+            dateTimePickerTextStyle: TextStyle(
+              fontFamily: 'Inter',
             ),
           ),
         ),

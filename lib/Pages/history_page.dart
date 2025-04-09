@@ -102,8 +102,16 @@ class _HistoryPageState extends State<HistoryPage> {
                             },
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: Colors.grey[50],
                                 borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.2),
+                                    spreadRadius: 1,
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
@@ -164,11 +172,11 @@ class _HistoryPageState extends State<HistoryPage> {
                 widget.onClear?.call();
                 _showSnackBar();
               },
-              backgroundColor: Colors.white,
-              elevation: 4, // Changed from 0 to 4 for elevation
+              backgroundColor: Colors.red[100],
+              elevation: 4,
               child: const Icon(
                 FluentIcons.broom_24_regular,
-                color: Colors.grey,
+                color: Colors.black87,
               ),
             ),
           ),
