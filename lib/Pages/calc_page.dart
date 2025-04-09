@@ -605,10 +605,12 @@ class _CalcPageState extends State<CalcPage>
   // Button Text Size calculation can be simplified or kept as is
   double getButtonTextSize(String text, double btnSize) {
     // Simpler logic: smaller for longer text, larger for digits
-    if (text.length > 1 && !RegExp(r'^\d+$').hasMatch(text))
+    if (text.length > 1 && !RegExp(r'^\d+$').hasMatch(text)) {
       return btnSize * 0.3; // Smaller for sin, cos, log etc.
-    if (isDigit.hasMatch(text) || text == '.')
+    }
+    if (isDigit.hasMatch(text) || text == '.') {
       return btnSize * 0.4; // Larger for digits/dot
+    }
     return btnSize * 0.35; // Default
   }
 

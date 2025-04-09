@@ -80,70 +80,79 @@ class _HistoryPageState extends State<HistoryPage> {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: widget.history.length,
-                  itemBuilder: (context, index) {
-                    final entry = widget.history[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: GestureDetector(
-                        onTap: () {
-                          if (widget.onExpressionTap != null) {
-                            widget.onExpressionTap!(entry.result);
-                          }
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+              : ScrollConfiguration(
+                  behavior: const ScrollBehavior().copyWith(
+                    physics: const BouncingScrollPhysics(),
+                    scrollbars: false,
+                  ),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: widget.history.length,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      final entry = widget.history[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: RepaintBoundary(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (widget.onExpressionTap != null) {
+                                widget.onExpressionTap!(entry.result);
+                              }
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(
-                                      FluentIcons.history_24_regular,
-                                      size: 20,
-                                      color: Colors.grey,
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          FluentIcons.history_24_regular,
+                                          size: 20,
+                                          color: Colors.grey,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          entry.expression,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(height: 8),
                                     Text(
-                                      entry.expression,
+                                      '= ${entry.result}',
                                       style: const TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.black87,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _formatTimestamp(entry.timestamp),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '= ${entry.result}',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _formatTimestamp(entry.timestamp),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
         ),
         if (widget.history.isNotEmpty && widget.onClear != null)

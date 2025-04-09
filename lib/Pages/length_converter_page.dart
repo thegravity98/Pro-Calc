@@ -331,7 +331,6 @@ class _LengthConverterPageState extends State<LengthConverterPage> {
                           child: CupertinoButton(
                               // Swap Button
                               padding: EdgeInsets.zero,
-                              minSize: 0,
                               onPressed: () {
                                 setState(() {
                                   final temp = _fromUnit;
@@ -344,7 +343,7 @@ class _LengthConverterPageState extends State<LengthConverterPage> {
                                 CupertinoIcons.arrow_right_arrow_left_circle,
                                 size: 28,
                                 color: CupertinoColors.activeBlue,
-                              )),
+                              ), minimumSize: Size(0, 0)),
                         ),
                         _buildUnitPicker(isFromUnit: false), // To Unit
                       ],

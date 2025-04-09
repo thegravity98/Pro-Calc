@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:pro_calc/Components/bottom_bar.dart';
 import 'package:pro_calc/Pages/calc_page.dart';
 import 'package:pro_calc/Pages/settings_page.dart';
@@ -7,9 +9,18 @@ import 'package:pro_calc/Pages/tools_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set device orientation
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+
+  // Enable high refresh rate support
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  if (Platform.isAndroid) {
+    await FlutterDisplayMode.setHighRefreshRate();
+  }
+
   runApp(const ProCalc());
 }
 
@@ -46,7 +57,7 @@ class _ProCalcState extends State<ProCalc> {
           ),
         ),
         debugShowCheckedModeBanner: false,
-        title: 'Pro Calculator',
+        title: 'Pro Calc',
         home: CupertinoPageScaffold(
           child: BottomBar(tabs: _tabs),
         ),
