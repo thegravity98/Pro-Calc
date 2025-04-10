@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart'; // Keep for Colors if needed, but prefer CupertinoColors
+// Keep for Colors if needed, but prefer CupertinoColors
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 class LengthConverterPage extends StatefulWidget {
@@ -338,12 +338,12 @@ class _LengthConverterPageState extends State<LengthConverterPage> {
                                   _toUnit = temp;
                                   _convert(); // Re-convert after swap
                                 });
-                              },
+                              }, minimumSize: const Size(0, 0),
                               child: const Icon(
                                 CupertinoIcons.arrow_right_arrow_left_circle,
                                 size: 28,
                                 color: CupertinoColors.activeBlue,
-                              ), minimumSize: Size(0, 0)),
+                              )),
                         ),
                         _buildUnitPicker(isFromUnit: false), // To Unit
                       ],
