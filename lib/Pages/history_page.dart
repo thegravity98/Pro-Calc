@@ -1,6 +1,9 @@
+// import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../models/calculation_history.dart';
+// import 'package:flutter/services.dart';
 
 class HistoryPage extends StatefulWidget {
   final List<CalculationHistory> history;
@@ -29,7 +32,7 @@ class _HistoryPageState extends State<HistoryPage> {
         child: SafeArea(
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.grey[200]?.withOpacity(0.9),
+              color: const Color.fromRGBO(20, 20, 20, 0.60),
               borderRadius: BorderRadius.circular(10),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -37,7 +40,7 @@ class _HistoryPageState extends State<HistoryPage> {
               child: Text(
                 'History Cleared',
                 style: TextStyle(
-                  color: Colors.black,
+                  color: Colors.white,
                   fontSize: 16,
                 ),
               ),
@@ -48,7 +51,7 @@ class _HistoryPageState extends State<HistoryPage> {
     );
 
     overlay.insert(overlayEntry);
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 1), () {
       overlayEntry.remove();
     });
   }
@@ -126,11 +129,18 @@ class _HistoryPageState extends State<HistoryPage> {
                                           color: Colors.grey,
                                         ),
                                         const SizedBox(width: 8),
-                                        Text(
-                                          entry.expression,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            color: Colors.black87,
+                                        Expanded(
+                                          child: Text(
+                                            entry.expression,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              color: Colors.black87,
+                                            ),
+                                            overflow: TextOverflow
+                                                .ellipsis, // Show '...' if too long
+                                            maxLines:
+                                                1, // Ensure it stays on one line
+                                            softWrap: false, // Prevent wrapping
                                           ),
                                         ),
                                       ],
@@ -143,6 +153,11 @@ class _HistoryPageState extends State<HistoryPage> {
                                         fontWeight: FontWeight.bold,
                                         color: Colors.black,
                                       ),
+                                      overflow: TextOverflow
+                                          .ellipsis, // Handle potential overflow
+                                      maxLines:
+                                          2, // Allow maybe two lines for result
+                                      softWrap: true,
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
