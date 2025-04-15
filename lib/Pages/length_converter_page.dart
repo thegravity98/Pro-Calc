@@ -338,7 +338,7 @@ class _LengthConverterPageState extends State<LengthConverterPage> {
                                   _toUnit = temp;
                                   _convert(); // Re-convert after swap
                                 });
-                              }, minimumSize: const Size(0, 0),
+                              },
                               child: const Icon(
                                 CupertinoIcons.arrow_right_arrow_left_circle,
                                 size: 28,
