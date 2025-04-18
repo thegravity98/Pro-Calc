@@ -2,10 +2,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
-import 'package:pro_calc/Components/bottom_bar.dart';
 import 'package:pro_calc/Pages/calc_page.dart';
-import 'package:pro_calc/Pages/settings_page.dart';
-import 'package:pro_calc/Pages/tools_page.dart';
 
 Future<void> initializeApp() async {
   try {
@@ -39,11 +36,11 @@ class ProCalc extends StatefulWidget {
 }
 
 class _ProCalcState extends State<ProCalc> {
-  final List<Widget> _tabs = [
-    const CalcPage(),
-    const ToolsPage(),
-    const SettingsPage(),
-  ];
+  // final List<Widget> _tabs = [
+  //   const CalcPage(),
+  //   const ToolsPage(),
+  //   const SettingsPage(),
+  // ];
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
@@ -53,9 +50,9 @@ class _ProCalcState extends State<ProCalc> {
         statusBarIconBrightness: Brightness.dark,
       ),
     );
-    return SafeArea(
+    return const SafeArea(
       child: CupertinoApp(
-        theme: const CupertinoThemeData(
+        theme: CupertinoThemeData(
           primaryColor: CupertinoColors.activeBlue,
           textTheme: CupertinoTextThemeData(
             textStyle: TextStyle(
@@ -88,9 +85,10 @@ class _ProCalcState extends State<ProCalc> {
         ),
         debugShowCheckedModeBanner: false,
         title: 'Pro Calc',
-        home: CupertinoPageScaffold(
-          child: BottomBar(tabs: _tabs),
-        ),
+        home: CalcPage(),
+        //CupertinoPageScaffold(
+        //child: BottomBar(tabs: _tabs),
+        //),
       ),
     );
   }
