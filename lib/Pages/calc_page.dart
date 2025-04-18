@@ -2,16 +2,14 @@ import 'dart:math';
 import 'package:eval_ex/expression.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:eval_ex/eval_ex.dart';
-// import 'package:flutter/material.dart'; // Keep commented unless specific Material colors are needed
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-// import 'package:math_expressions/math_expressions.dart';
-import 'history_page.dart'; // Ensure this path is correct
-import '../models/calculation_history.dart'; // Ensure this path is correct
+import '../models/calculation_history.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'tools_page.dart';
+import 'history_page.dart';
 
 class CalcPage extends StatefulWidget {
   const CalcPage({super.key});
@@ -29,13 +27,20 @@ class _CalcPageState extends State<CalcPage>
   late Animation<double> _answerTextSizeAnimation;
   late ScrollController _inputScrollController;
 
+  // Add these variables to the state class
+  int _rawCursorPosition = 0;
+  Map<int, int> _formattedToRawPositionMap = {};
+  Map<int, int> _rawToFormattedPositionMap = {};
+
   String answer = '';
   bool isDeg = true;
   bool isShift = false; // Track shift state
   bool _lastActionWasEval = false;
 
+  bool isDarkThemeEnabled = false;
+
   final NumberFormat _numberFormat = NumberFormat(
-    "#,##0.###",
+    "#,##0.########",
     "en_US",
   ); // Flexible decimal places
   String _rawExpression = ''; // Store unformatted expression
@@ -46,37 +51,13 @@ class _CalcPageState extends State<CalcPage>
   static const double _minFontSize = 24.0;
   static const double _maxFontSize = 55.0;
 
-  // double _calculateInputFontSize(String inputText, double baseFontSize) {
-  //   const int maxLengthBeforeShrink = 15; // Start shrinking after 15 chars
-  //   const double minFontSize = 20.0; // Minimum font size
-  //   const double scaleFactor = 0.95; // Shrink by 5% per extra character
-
-  //   if (inputText.length <= maxLengthBeforeShrink) {
-  //     return baseFontSize; // Use base font size for short inputs
-  //   } else {
-  //     // Calculate scaled font size
-  //     final excessLength = inputText.length - maxLengthBeforeShrink;
-  //     final scaledSize = baseFontSize * pow(scaleFactor, excessLength);
-  //     return scaledSize.clamp(minFontSize, baseFontSize);
-  //   }
-  // }
-
   // --- Regular Expressions ---
   final isDigit = RegExp(r'[0-9]$');
-  final isLogFun = RegExp(r'log\($'); // Matches log(
-  final isTrigFun = RegExp(r'(sin|cos|tan|asin|acos|atan)\($');
   final isEndingWithOperator = RegExp(r'[+\-*/×÷%^]$');
   final isEndingWithOpenParen = RegExp(r'\($');
-  final isOperator = RegExp(r'[+\-*/×÷%^]');
   final endsWithNumberOrParenOrConst = RegExp(r'([\d.)eπXY])$');
-  final endsWithFunctionName = RegExp(
-    r'(sin|cos|tan|asin|acos|atan|log|sqrt)$',
-  );
-  final percentagePattern = RegExp(r'(\d+\.?\d*)\s*%\s*$'); // e.g., "90 + 2 %"
-  final moduloPattern = RegExp(r'(\d+\.?\d*)\s*%\s*(\d+\.?\d*)'); // Added log
 
   // --- Calculation Context & Variables ---
-  // final ContextModel cm = ContextModel();
   final Map<String, double> variables = {'X': 0, 'Y': 0};
 
   // --- History ---
@@ -90,7 +71,6 @@ class _CalcPageState extends State<CalcPage>
     'X',
     'Y',
     'DEG',
-    // 'hist',
     'AC',
     'sin',
     'cos',
@@ -118,15 +98,14 @@ class _CalcPageState extends State<CalcPage>
     '3',
     '+',
     'log',
-    // '10ˣ',
     '00',
-
     '0',
     '.',
     '=',
   ];
 
   // --- Initialization & Disposal ---
+  @override
   @override
   void initState() {
     super.initState();
@@ -138,6 +117,12 @@ class _CalcPageState extends State<CalcPage>
     );
     _inputTextSizeAnimation = const AlwaysStoppedAnimation(36.0);
     _answerTextSizeAnimation = const AlwaysStoppedAnimation(32.0);
+
+    // Initialize position tracking
+    _rawCursorPosition = 0;
+    _formattedToRawPositionMap = {};
+    _rawToFormattedPositionMap = {};
+
     _loadHistory();
   }
 
@@ -246,528 +231,229 @@ class _CalcPageState extends State<CalcPage>
   }
 
   // --- Calculation Logic ---
-  // Future<void> _evaluateExpression({bool finalEvaluation = false}) async {
-  //   String expression = _rawExpression.trim();
-  //   debugPrint("Original Expression: '$expression'");
-
-  //   // Skip evaluation for empty or invalid expressions unless finalEvaluation is true
-  //   if (expression.isEmpty) {
-  //     if (answer.isNotEmpty && mounted) setState(() => answer = '');
-  //     return;
-  //   }
-
-  //   // Check for incomplete expressions
-  //   bool endsWithOp =
-  //       isEndingWithOperator.hasMatch(expression) && !expression.endsWith('%');
-  //   if (endsWithOp &&
-  //       expression.length > 1 &&
-  //       expression[expression.length - 2] == '(' &&
-  //       expression.endsWith('-')) {
-  //     endsWithOp = false;
-  //   }
-  //   bool endsWithOpenParenCheck = isEndingWithOpenParen.hasMatch(expression);
-  //   int openParenCount = '('.allMatches(expression).length;
-  //   int closeParenCount = ')'.allMatches(expression).length;
-  //   bool parenthesisUnbalanced = openParenCount != closeParenCount;
-  //   bool potentiallyUnclosedFunction = false;
-  //   if (parenthesisUnbalanced) {
-  //     final funcPatterns = ['sin(', 'cos(', 'tan(', 'log(', 'sqrt(', 'pow('];
-  //     int lastFuncOpenIndex = -1;
-  //     for (var pattern in funcPatterns) {
-  //       lastFuncOpenIndex =
-  //           max(lastFuncOpenIndex, expression.lastIndexOf(pattern));
-  //     }
-  //     if (lastFuncOpenIndex != -1 &&
-  //         expression.lastIndexOf('(') >
-  //             expression.lastIndexOf(')', lastFuncOpenIndex)) {
-  //       potentiallyUnclosedFunction = true;
-  //     }
-  //   }
-  //   debugPrint(
-  //       "Checks: endsWithOp=$endsWithOp, endsWithOpenParen=$endsWithOpenParenCheck, "
-  //       "unbalanced=$parenthesisUnbalanced, unclosedFunc=$potentiallyUnclosedFunction");
-
-  //   // Skip auto-update for incomplete expressions unless final evaluation
-  //   if (!finalEvaluation &&
-  //       (endsWithOp ||
-  //           endsWithOpenParenCheck ||
-  //           potentiallyUnclosedFunction ||
-  //           expression.isEmpty)) {
-  //     if (answer.isNotEmpty && mounted) setState(() => answer = '');
-  //     return;
-  //   }
-
-  //   String resultString = '';
-  //   String preparedExpression = expression;
-
-  //   try {
-  //     const double degToRad = pi / 180.0;
-  //     preparedExpression = preparedExpression.replaceAll('×', '*');
-  //     preparedExpression = preparedExpression.replaceAll('÷', '/');
-  //     preparedExpression = preparedExpression.replaceAll('π', '($pi)');
-  //     preparedExpression = preparedExpression.replaceAllMapped(
-  //         RegExp(r'(?<![\d.])e'), (match) => '($e)');
-  //     preparedExpression = preparedExpression.replaceAll('√', 'sqrt');
-  //     preparedExpression = preparedExpression.replaceAll('log(', 'log(10,');
-  //     debugPrint("After symbol/func replace: '$preparedExpression'");
-
-  //     preparedExpression =
-  //         preparedExpression.replaceAllMapped(RegExp(r'(\d+)!'), (match) {
-  //       int n = int.parse(match.group(1)!);
-  //       if (n > 170) return 'Infinity';
-  //       if (n < 0) return 'NaN';
-  //       if (n == 0 || n == 1) return '1';
-  //       double fact = 1;
-  //       for (int i = 2; i <= n; i++) {
-  //         fact *= i;
-  //       }
-  //       return fact.toString();
-  //     });
-
-  //     if (preparedExpression.contains('%')) {
-  //       debugPrint("Processing % in: '$preparedExpression'");
-  //       if (RegExp(r'^\s*(\d+\.?\d*)%$', caseSensitive: false)
-  //           .hasMatch(preparedExpression)) {
-  //         preparedExpression = preparedExpression.replaceAllMapped(
-  //             RegExp(r'(\d+\.?\d*)%$', caseSensitive: false), (match) {
-  //           final val = double.parse(match.group(1)!);
-  //           final result = val / 100.0;
-  //           debugPrint("Standalone %: $val % = $result");
-  //           return result.toString();
-  //         });
-  //       } else if (RegExp(r'(\d+\.?\d*)[+\-](\d+\.?\d*)%$',
-  //               caseSensitive: false)
-  //           .hasMatch(preparedExpression)) {
-  //         debugPrint("Percentage pattern matched: '$preparedExpression'");
-  //         preparedExpression = preparedExpression.replaceAllMapped(
-  //             RegExp(r'(\d+\.?\d*)[+\-](\d+\.?\d*)%$', caseSensitive: false),
-  //             (match) {
-  //           final baseValue = double.parse(match.group(1)!);
-  //           final percentValue = double.parse(match.group(2)!);
-  //           final operator = preparedExpression.contains('+') ? '+' : '-';
-  //           final percentage = percentValue / 100 * baseValue;
-  //           final result = operator == '+'
-  //               ? baseValue + percentage
-  //               : baseValue - percentage;
-  //           debugPrint(
-  //               "Percentage: $baseValue $operator ($percentValue / 100 * $baseValue) = $result");
-  //           return result.toString();
-  //         });
-  //       } else if (moduloPattern.hasMatch(preparedExpression)) {
-  //         debugPrint("Modulo pattern matched: '$preparedExpression'");
-  //         preparedExpression =
-  //             preparedExpression.replaceAllMapped(moduloPattern, (match) {
-  //           final left = double.parse(match.group(1)!);
-  //           final right = double.parse(match.group(2)!);
-  //           final result = (left / 100 * right);
-  //           debugPrint("Modulo: $left % $right = $result");
-  //           return result.toString();
-  //         });
-  //       } else {
-  //         debugPrint("Unmatched % pattern in: '$preparedExpression'");
-  //       }
-  //     } else {
-  //       debugPrint("No % found in: '$preparedExpression'");
-  //     }
-
-  //     if (isDeg) {
-  //       preparedExpression = preparedExpression
-  //           .replaceAllMapped(RegExp(r'(sin|cos|tan)\((.*?)\)'), (match) {
-  //         String functionName = match.group(1)!;
-  //         String innerExpression = match.group(2)!;
-  //         if (!innerExpression.contains('* $degToRad')) {
-  //           return '$functionName(($innerExpression) * $degToRad)';
-  //         }
-  //         return match.group(0)!;
-  //       });
-  //     }
-
-  //     int openParenCount = '('.allMatches(preparedExpression).length;
-  //     int closeParenCount = ')'.allMatches(preparedExpression).length;
-  //     if (openParenCount > closeParenCount && finalEvaluation) {
-  //       preparedExpression += ')' * (openParenCount - closeParenCount);
-  //     }
-
-  //     debugPrint("Final expression for parser: '$preparedExpression'");
-  //     if (preparedExpression.contains('%')) {
-  //       throw Exception("Unprocessed '%' found");
-  //     }
-
-  //     cm.bindVariable(Variable('X'), Number(variables['X'] ?? 0));
-  //     cm.bindVariable(Variable('Y'), Number(variables['Y'] ?? 0));
-  //     ExpressionParser p = GrammarParser();
-  //     Expression exp = p.parse(preparedExpression);
-  //     double result = exp.evaluate(EvaluationType.REAL, cm);
-  //     debugPrint("Parsed result: $result");
-  //     if (result.isNaN) {
-  //       resultString = 'Error';
-  //     } else if (result.isInfinite) {
-  //       resultString = result.isNegative ? '-Infinity' : 'Infinity';
-  //     } else {
-  //       resultString = formatNumber(result);
-  //     }
-  //   } catch (e) {
-  //     debugPrint('Evaluation Error: $e');
-  //     resultString = finalEvaluation ? 'Error' : '';
-  //   }
-
-  //   debugPrint("Result string: '$resultString'");
-  //   if (mounted) {
-  //     bool shouldUpdate = finalEvaluation ||
-  //         (resultString.isNotEmpty && resultString != answer) ||
-  //         (resultString.isEmpty && answer.isNotEmpty && !finalEvaluation);
-  //     debugPrint("Should update: $shouldUpdate");
-  //     if (shouldUpdate) {
-  //       final bool resultIsSameAsInput = (resultString == expression);
-  //       setState(() {
-  //         if (!finalEvaluation &&
-  //             resultIsSameAsInput &&
-  //             resultString != "Error") {
-  //           answer = '';
-  //         } else {
-  //           answer = resultString;
-  //         }
-  //       });
-  //     }
-  //   }
-  // }
-
   Future<void> evaluateExpression({bool finalEvaluation = false}) async {
     String expression = _rawExpression.trim();
     debugPrint("Original Expression: '$expression'");
 
-    // Skip evaluation for empty or invalid expressions unless finalEvaluation is true
     if (expression.isEmpty) {
-      if (answer.isNotEmpty && mounted) setState(() => answer = '');
+      if (mounted) setState(() => answer = '');
       return;
     }
-
-    // Check for incomplete expressions
-    bool endsWithOp =
-        isEndingWithOperator.hasMatch(expression) && !expression.endsWith('%');
-    if (endsWithOp &&
-        expression.length > 1 &&
-        expression[expression.length - 2] == '(' &&
-        expression.endsWith('-')) {
-      endsWithOp = false;
-    }
-    bool endsWithOpenParenCheck = isEndingWithOpenParen.hasMatch(expression);
-    int openParenCount = '('.allMatches(expression).length;
-    int closeParenCount = ')'.allMatches(expression).length;
-    bool parenthesisUnbalanced = openParenCount != closeParenCount;
-    bool potentiallyUnclosedFunction = false;
-    if (parenthesisUnbalanced) {
-      final funcPatterns = ['sin(', 'cos(', 'tan(', 'log(', 'sqrt(', 'pow('];
-      int lastFuncOpenIndex = -1;
-      for (var pattern in funcPatterns) {
-        lastFuncOpenIndex = max(
-          lastFuncOpenIndex,
-          expression.lastIndexOf(pattern),
-        );
-      }
-      if (lastFuncOpenIndex != -1 &&
-          expression.lastIndexOf('(') >
-              expression.lastIndexOf(')', lastFuncOpenIndex)) {
-        potentiallyUnclosedFunction = true;
-      }
-    }
-    debugPrint(
-      "Checks: endsWithOp=$endsWithOp, endsWithOpenParen=$endsWithOpenParenCheck, "
-      "unbalanced=$parenthesisUnbalanced, unclosedFunc=$potentiallyUnclosedFunction",
-    );
-
-    // Skip auto-update for incomplete expressions unless final evaluation
-    if (!finalEvaluation &&
-        (endsWithOp ||
-            endsWithOpenParenCheck ||
-            potentiallyUnclosedFunction ||
-            expression.isEmpty)) {
-      if (answer.isNotEmpty && mounted) setState(() => answer = '');
-      return;
-    }
-
-    String resultString = '';
-    String preparedExpression = expression;
 
     try {
-      const double degToRad = pi / 180.0;
-      preparedExpression = preparedExpression.replaceAll('×', '*');
-      preparedExpression = preparedExpression.replaceAll('÷', '/');
-      preparedExpression = preparedExpression.replaceAll(
-        'π',
-        '3.141592653589793',
-      );
-      preparedExpression = preparedExpression.replaceAllMapped(
-        RegExp(r'(?<![\d.])e'),
-        (match) => '2.718281828459045',
-      );
-      preparedExpression = preparedExpression.replaceAll('√', 'SQRT');
-      preparedExpression = preparedExpression.replaceAll(
-        'log(',
-        'LOG10(',
-      ); // eval_ex uses LOG10
+      // Check for incomplete expressions
+      bool endsWithOp = isEndingWithOperator.hasMatch(expression);
+      bool endsWithOpenParen = isEndingWithOpenParen.hasMatch(expression);
+      int openCount = '('.allMatches(expression).length;
+      int closeCount = ')'.allMatches(expression).length;
+      bool unbalancedParens = openCount != closeCount;
+      bool hasOperator = RegExp(r'[+\-*/×÷%^]').hasMatch(expression);
+      bool hasFunction = RegExp(r'(sin|cos|tan|log|ln|√)').hasMatch(expression);
 
-      debugPrint("After symbol/func replace: '$preparedExpression'");
+      // Don't show answer for incomplete expressions
+      if (!finalEvaluation &&
+          (!hasOperator && !hasFunction ||
+              endsWithOp ||
+              endsWithOpenParen ||
+              unbalancedParens)) {
+        debugPrint(
+            "Skipping evaluation: hasOperator=$hasOperator, hasFunction=$hasFunction, endsWithOp=$endsWithOp, unbalancedParens=$unbalancedParens");
+        if (mounted) setState(() => answer = '');
+        return;
+      }
 
-      // Handle factorial
-      preparedExpression = preparedExpression.replaceAllMapped(
-        RegExp(r'(\d+)!'),
-        (match) {
-          int n = int.parse(match.group(1)!);
-          if (n > 170) return 'Infinity';
-          if (n < 0) return 'NaN';
-          if (n == 0 || n == 1) return '1';
-          double fact = 1;
-          for (int i = 2; i <= n; i++) {
-            fact *= i;
-          }
-          return fact.toString();
-        },
-      );
+      // IMPORTANT: Remove commas from the expression before evaluation
+      String expressionWithoutCommas = expression.replaceAll(',', '');
 
-      // Handle percentage
-      if (preparedExpression.contains('%')) {
-        debugPrint("Processing % in: '$preparedExpression'");
-        if (RegExp(
-          r'^\s*(\d+\.?\d*)%$',
-          caseSensitive: false,
-        ).hasMatch(preparedExpression)) {
-          preparedExpression = preparedExpression.replaceAllMapped(
-            RegExp(r'(\d+\.?\d*)%$', caseSensitive: false),
-            (match) {
-              final val = double.parse(match.group(1)!);
-              final result = val / 100.0;
-              debugPrint("Standalone %: $val % = $result");
-              return result.toString();
-            },
-          );
-        } else if (RegExp(
-          r'(\d+\.?\d*)[+\-](\d+\.?\d*)%$',
-          caseSensitive: false,
-        ).hasMatch(preparedExpression)) {
-          debugPrint("Percentage pattern matched: '$preparedExpression'");
-          preparedExpression = preparedExpression.replaceAllMapped(
-            RegExp(r'(\d+\.?\d*)[+\-](\d+\.?\d*)%$', caseSensitive: false),
-            (match) {
-              final baseValue = double.parse(match.group(1)!);
-              final percentValue = double.parse(match.group(2)!);
-              final operator = preparedExpression.contains('+') ? '+' : '-';
-              final percentage = percentValue / 100 * baseValue;
-              final result = operator == '+'
-                  ? baseValue + percentage
-                  : baseValue - percentage;
+      // Handle inverse trig functions in degree mode
+      String preparedExpression = expressionWithoutCommas;
+
+      if (expression.contains('%')) {
+        try {
+          // Replace percentages with their decimal equivalents based on context
+          expression = _handlePercentageCalculations(expression);
+          preparedExpression = expression.replaceAll(',', '');
+          debugPrint("Expression after percentage handling: '$expression'");
+        } catch (e) {
+          debugPrint("Error handling percentages: $e");
+          // Continue with original expression if percentage handling fails
+        }
+      }
+
+      if (isDeg && isShift && expression.contains('⁻¹')) {
+        // Find all inverse trig functions in the expression
+        RegExp inverseTrigPattern =
+            RegExp(r'(sin|cos|tan)⁻¹\s*\(\s*([^()]+)\s*\)');
+        Iterable<RegExpMatch> matches =
+            inverseTrigPattern.allMatches(expression);
+
+        // Process each match
+        for (RegExpMatch match in matches) {
+          String fullMatch = match.group(0)!;
+          String funcType = match.group(1)!;
+          String argExpr = match.group(2)!;
+
+          debugPrint(
+              "Found inverse trig function: $fullMatch, type: $funcType, arg: $argExpr");
+
+          // Prepare the argument expression
+          String preparedArgExpr = argExpr
+              .replaceAll('×', '*')
+              .replaceAll('÷', '/')
+              .replaceAll('π', '3.141592653589793')
+              .replaceAllMapped(
+                  RegExp(r'(?<![\d.])e'), (m) => '2.718281828459045');
+
+          // Evaluate the argument
+          try {
+            Expression argExpression = Expression(preparedArgExpr);
+            var argResult = argExpression.eval();
+
+            if (argResult != null) {
+              double argValue = argResult.toDouble();
+              double resultInRadians;
+
+              // Apply the appropriate inverse trig function
+              switch (funcType) {
+                case "sin":
+                  resultInRadians = asin(argValue);
+                  break;
+                case "cos":
+                  resultInRadians = acos(argValue);
+                  break;
+                case "tan":
+                  resultInRadians = atan(argValue);
+                  break;
+                default:
+                  throw Exception("Unknown inverse trig function");
+              }
+
+              // Convert from radians to degrees
+              double resultInDegrees = resultInRadians * (180 / pi);
               debugPrint(
-                "Percentage: $baseValue $operator ($percentValue / 100 * $baseValue) = $result",
-              );
-              return result.toString();
-            },
-          );
-        } else if (moduloPattern.hasMatch(preparedExpression)) {
-          debugPrint("Modulo pattern matched: '$preparedExpression'");
-          preparedExpression = preparedExpression.replaceAllMapped(
-            moduloPattern,
-            (match) {
-              final left = double.parse(match.group(1)!);
-              final right = double.parse(match.group(2)!);
-              final result = (left / 100 * right);
-              debugPrint("Modulo: $left % $right = $result");
-              return result.toString();
-            },
-          );
+                  "Calculated $funcType⁻¹($argValue) = $resultInDegrees degrees");
+
+              // Replace the inverse trig function with its numeric result
+              preparedExpression = preparedExpression.replaceFirst(
+                  fullMatch, resultInDegrees.toString());
+
+              debugPrint("Expression after substitution: $preparedExpression");
+            }
+          } catch (e) {
+            debugPrint("Error evaluating inverse trig argument: $e");
+            // If we can't evaluate this part, continue with the original expression
+          }
+        }
+      }
+
+      // Now process the expression with substituted values
+      preparedExpression = preparedExpression
+          .replaceAll('×', '*')
+          .replaceAll('÷', '/')
+          .replaceAll('π', '3.141592653589793')
+          .replaceAllMapped(
+              RegExp(r'(?<![\d.])e'), (match) => '2.718281828459045');
+
+      // Handle remaining trig functions
+      if (isShift) {
+        if (isDeg) {
+          preparedExpression = preparedExpression
+              .replaceAll('sin⁻¹(', 'ASIN(')
+              .replaceAll('cos⁻¹(', 'ACOS(')
+              .replaceAll('tan⁻¹(', 'ATAN(');
         } else {
-          debugPrint("Unmatched % pattern in: '$preparedExpression'");
+          preparedExpression = preparedExpression
+              .replaceAll('sin⁻¹(', 'ASINR(')
+              .replaceAll('cos⁻¹(', 'ACOSR(')
+              .replaceAll('tan⁻¹(', 'ATANR(');
         }
       } else {
-        debugPrint("No % found in: '$preparedExpression'");
+        if (isDeg) {
+          preparedExpression = preparedExpression
+              .replaceAllMapped(RegExp(r'sin\s*\(((?:[^()]*|\([^()]*\))*)\)'),
+                  (match) => 'SIN(${match.group(1)})')
+              .replaceAllMapped(RegExp(r'cos\s*\(((?:[^()]*|\([^()]*\))*)\)'),
+                  (match) => 'COS(${match.group(1)})')
+              .replaceAllMapped(RegExp(r'tan\s*\(((?:[^()]*|\([^()]*\))*)\)'),
+                  (match) => 'TAN(${match.group(1)})');
+        } else {
+          preparedExpression = preparedExpression
+              .replaceAllMapped(RegExp(r'sin\s*\(((?:[^()]*|\([^()]*\))*)\)'),
+                  (match) => 'SINR(${match.group(1)})')
+              .replaceAllMapped(RegExp(r'cos\s*\(((?:[^()]*|\([^()]*\))*)\)'),
+                  (match) => 'COSR(${match.group(1)})')
+              .replaceAllMapped(RegExp(r'tan\s*\(((?:[^()]*|\([^()]*\))*)\)'),
+                  (match) => 'TANR(${match.group(1)})');
+        }
       }
 
-      // Convert degrees to radians for trig functions
-      if (isDeg) {
-        preparedExpression = preparedExpression.replaceAllMapped(
-          RegExp(r'(SIN|COS|TAN)\((.*?)\)'),
-          (match) {
-            String functionName = match.group(1)!;
-            String innerExpression = match.group(2)!;
-            if (!innerExpression.contains('* $degToRad')) {
-              return '$functionName(($innerExpression) * $degToRad)';
+      // Handle sqrt and logarithms
+      // Handle sqrt and logarithms
+      // Handle sqrt and logarithms
+      preparedExpression = preparedExpression
+          .replaceAllMapped(RegExp(r'√\s*\(((?:[^()]*|\([^()]*\))*)\)'),
+              (match) => 'SQRT(${match.group(1)})')
+          .replaceAllMapped(
+              RegExp(r'ln\s*\(((?:[^()]*|\([^()]*\))*)\)'),
+              (match) =>
+                  'LOG(${match.group(1)})') // Use LOG for natural logarithm
+          .replaceAllMapped(
+              RegExp(r'log\s*\(((?:[^()]*|\([^()]*\))*)\)'),
+              (match) =>
+                  'LOG10(${match.group(1)})'); // Use LOG10 for base-10 logarithm
+
+      debugPrint("Final expression for evaluation: '$preparedExpression'");
+
+      for (var entry in variables.entries) {
+        preparedExpression =
+            preparedExpression.replaceAll(entry.key, entry.value.toString());
+      }
+      debugPrint(
+          "Expression with variables substituted: '$preparedExpression'");
+
+      if (preparedExpression.isNotEmpty) {
+        Expression exp = Expression(preparedExpression);
+        var evalResult = exp.eval();
+
+        if (evalResult != null) {
+          double result = evalResult.toDouble();
+
+          if (result.isFinite) {
+            if (mounted) {
+              setState(() {
+                answer = formatNumber(result);
+              });
             }
-            return match.group(0)!;
-          },
-        );
-      }
-
-      // Balance parentheses
-      int openParenCount = '('.allMatches(preparedExpression).length;
-      int closeParenCount = ')'.allMatches(preparedExpression).length;
-      if (openParenCount > closeParenCount && finalEvaluation) {
-        preparedExpression += ')' * (openParenCount - closeParenCount);
-      }
-
-      debugPrint("Final expression for parser: '$preparedExpression'");
-      if (preparedExpression.contains('%')) {
-        throw Exception("Unprocessed '%' found");
-      }
-
-      // Use eval_ex to evaluate the expression
-      Expression exp = Expression(preparedExpression);
-      // Set variables X and Y
-      exp.setStringVariable("X", variables['X'].toString());
-      exp.setStringVariable("Y", variables['Y'].toString());
-      // Evaluate
-      double result = double.parse(exp.eval()!.toString());
-      debugPrint("Parsed result: $result");
-
-      if (result.isNaN) {
-        resultString = 'Error';
-      } else if (result.isInfinite) {
-        resultString = result.isNegative ? '-Infinity' : 'Infinity';
-      } else {
-        resultString = formatNumber(result);
+          } else {
+            throw Exception("Result is not finite: $result");
+          }
+        } else {
+          throw Exception("Evaluation returned null");
+        }
       }
     } catch (e) {
       debugPrint('Evaluation Error: $e');
-      resultString = finalEvaluation ? 'Error' : '';
-    }
-
-    debugPrint("Result string: '$resultString'");
-    if (mounted) {
-      bool shouldUpdate = finalEvaluation ||
-          (resultString.isNotEmpty && resultString != answer) ||
-          (resultString.isEmpty && answer.isNotEmpty && !finalEvaluation);
-      debugPrint("Should update: $shouldUpdate");
-      if (shouldUpdate) {
-        final bool resultIsSameAsInput = (resultString == expression);
+      if (mounted) {
         setState(() {
-          if (!finalEvaluation &&
-              resultIsSameAsInput &&
-              resultString != "Error") {
-            answer = '';
-          } else {
-            answer = resultString;
-          }
+          answer = finalEvaluation ? 'Error' : '';
         });
       }
     }
   }
 
   void buttonPressed(String buttonText) {
-    final currentText = _rawExpression; // Use raw expression internally
-    final currentSelection = _inputController.selection;
-    final cursorPos = currentSelection.baseOffset >= 0
-        ? currentSelection.baseOffset.clamp(0, currentText.length)
-        : currentText.length;
-    final textBeforeCursor = currentText.substring(0, cursorPos);
-    final charBefore = cursorPos > 0 ? currentText[cursorPos - 1] : '';
-    final buffer = StringBuffer();
-    int newCursorPos = cursorPos;
-    bool evaluateAfter = false; // Default to false to prevent auto-evaluation
-
-    debugPrint(
-      "Button Pressed: '$buttonText', Raw Text: '$currentText', Cursor: $cursorPos",
-    );
-
-    // Helper to update text and cursor position
-    // Modify the updateText helper function to ensure raw expression is correctly updated
-    void updateText(String newRawText, [int? cursorOffset]) {
-      if (mounted) {
-        setState(() {
-          _rawExpression = newRawText;
-          String formattedText = formatExpression(newRawText);
-          // Always set cursor to end of formatted text unless specified
-          int adjustedCursorPos = formattedText.length;
-          debugPrint("Setting TextField to: '$formattedText'");
-          _inputController.value = TextEditingValue(
-            text: formattedText,
-            selection: TextSelection.collapsed(offset: adjustedCursorPos),
-          );
-          _lastActionWasEval = false;
-          if (evaluateAfter) {
-            evaluateExpression();
-          } else if (answer.isNotEmpty) {
-            answer = '';
-          }
-        });
-      }
-    }
-
-    // Handle special buttons
     switch (buttonText) {
-      case 'AC':
-        if (mounted) {
-          setState(() {
-            _rawExpression = '';
-            _inputController.clear();
-            answer = '';
-            _animationController.reset();
-            _lastActionWasEval = false; // Reset flag
-          });
-        }
-        return;
-      case '=':
-        debugPrint("Evaluating: '$currentText'");
-        if (currentText.isNotEmpty &&
-            (!isEndingWithOperator.hasMatch(currentText.trim()) ||
-                currentText.trim().endsWith('%')) &&
-            !isEndingWithOpenParen.hasMatch(
-              currentText.trim().replaceAll(RegExp(r'\)+$'), ''),
-            )) {
-          evaluateExpression(finalEvaluation: true).then((_) {
-            if (mounted &&
-                answer.isNotEmpty &&
-                answer != "Error" &&
-                !answer.contains("Infinity")) {
-              addToHistory(_inputController.text.trim(), answer);
-              setState(() {
-                _lastActionWasEval = true;
-                debugPrint(
-                  "Starting animation: ${_animationController.status}",
-                );
-                _animationController.forward().then((_) {
-                  debugPrint(
-                    "Animation completed: ${_animationController.status}",
-                  );
-                });
-              });
-            } else if (mounted) {
-              setState(() {
-                debugPrint("Resetting animation on error");
-                _animationController.reset();
-              });
-            }
-          });
-        } else {
-          debugPrint("Evaluation skipped: invalid expression");
-          if (mounted) _animationController.reset();
-        }
-        return;
-      case 'DEG':
-      case 'RAD':
-        if (mounted) {
-          setState(() {
-            isDeg = !isDeg;
-            _lastActionWasEval = false; // Reset flag
-            evaluateAfter =
-                currentText.isNotEmpty; // Evaluate only if there's input
-            if (evaluateAfter) evaluateExpression();
-          });
-        }
-        return;
       case 'hist':
         showHistory(context);
         _lastActionWasEval = false; // Reset flag
         return;
-      case 'Home':
-      case 'Unit':
       case 'Settings':
-        showHistory(context);
-        _lastActionWasEval = false; // Reset flag
+        showSettings(context);
+        // _lastActionWasEval = false; // Reset flag
         return;
-      case 'Calc':
+      case 'unit':
+        _showToolsModal(context);
         _lastActionWasEval = false; // Reset flag
-        return;
-      case 'X':
-      case 'Y':
-        handleVariableInput(buttonText);
         return;
       case 'Copy':
         if (answer.isNotEmpty &&
@@ -779,391 +465,1204 @@ class _CalcPageState extends State<CalcPage>
           showErrorSnackbar(context, 'No valid answer to copy');
         }
         return;
+
       case 'Paste':
-        debugPrint("Starting paste operation");
-        validateAndPasteClipboard(context).then((isValid) {
-          debugPrint("Validation result: $isValid");
-          if (!isValid) {
-            debugPrint("Paste aborted due to invalid clipboard content");
-            return;
+        handlePaste();
+        return;
+
+      case 'AC':
+        if (mounted) {
+          setState(() {
+            _rawExpression = '';
+            _inputController.clear();
+            answer = '';
+            _animationController.reset();
+            _validatePositionMaps();
+          });
+        }
+        return;
+
+      case 'del':
+        if (_rawExpression.isNotEmpty) {
+          final currentText = _rawExpression;
+          final currentSelection = _inputController.selection;
+          final cursorPos = currentSelection.baseOffset >= 0
+              ? currentSelection.baseOffset
+                  .clamp(0, _inputController.text.length)
+              : _inputController.text.length;
+
+          // Convert from formatted position to raw position
+          final rawCursorPos =
+              _formattedToRawPositionMap[cursorPos] ?? currentText.length;
+
+          if (rawCursorPos > 0) {
+            // Get the text before and after cursor
+            String textBeforeCursor = currentText.substring(0, rawCursorPos);
+            String textAfterCursor = currentText.substring(rawCursorPos);
+
+            // Remove one character before cursor
+            String newTextBeforeCursor =
+                textBeforeCursor.substring(0, textBeforeCursor.length - 1);
+            String newText = newTextBeforeCursor + textAfterCursor;
+
+            int newRawCursorPos = rawCursorPos - 1;
+
+            if (mounted) {
+              setState(() {
+                _rawExpression = newText;
+                _rawCursorPosition = newRawCursorPos;
+
+                String formattedText = formatExpression(newText);
+                int formattedCursorPos =
+                    _rawToFormattedPositionMap[_rawCursorPosition] ?? 0;
+
+                _inputController.value = TextEditingValue(
+                  text: formattedText,
+                  selection: TextSelection.collapsed(
+                    offset: formattedCursorPos,
+                  ),
+                );
+                _lastActionWasEval = false;
+                evaluateExpression();
+              });
+            }
           }
-          if (mounted) {
-            Clipboard.getData(Clipboard.kTextPlain).then((clipboardData) {
-              String pastedText = clipboardData?.text?.trim() ?? '';
-              debugPrint("Pasting text: '$pastedText'");
-              if (pastedText.isEmpty) {
-                debugPrint("Clipboard empty after validation");
-                return;
-              }
-              // Process the expression to clean numbers and preserve operators
-              final numberFormat = NumberFormat("#,##0.###", "en_US");
-              final tokenPattern = RegExp(
-                r'(\d{1,3}(?:,\d{3})*(?:\.\d+)?|[+\-*/×÷%^()]|\b(sin|cos|tan|log|sqrt|π|e|X|Y)\b)',
+        }
+        return;
+
+      // case '%':
+      //   String currentText = _rawExpression;
+      //   debugPrint(
+      //       "Percentage button pressed. Current expression: '$currentText'");
+
+      //   // If expression is empty, do nothing
+      //   if (currentText.isEmpty) {
+      //     return;
+      //   }
+
+      //   // If last action was evaluation, start fresh with the answer
+      //   if (_lastActionWasEval) {
+      //     if (answer.isNotEmpty &&
+      //         answer != "Error" &&
+      //         !answer.contains("Infinity")) {
+      //       // Use the answer as the base value
+      //       String cleanAnswer = answer.replaceAll(',', '');
+      //       double value = double.tryParse(cleanAnswer) ?? 0;
+      //       value = value / 100; // Convert to percentage
+
+      //       setState(() {
+      //         _rawExpression = value.toString();
+      //         _inputController.text = formatExpression(_rawExpression);
+      //         _inputController.selection = TextSelection.collapsed(
+      //           offset: _inputController.text.length,
+      //         );
+      //         _lastActionWasEval = false;
+      //         _animationController.reset();
+      //         answer = '';
+      //         evaluateExpression();
+      //       });
+      //     }
+      //     return;
+      //   }
+
+      //   // Process the percentage calculation immediately
+      //   try {
+      //     // Create a temporary expression to evaluate
+      //     String tempExpression = currentText;
+
+      //     // Remove commas for calculation
+      //     tempExpression = tempExpression.replaceAll(',', '');
+
+      //     // Prepare the expression for evaluation
+      //     tempExpression = tempExpression
+      //         .replaceAll('×', '*')
+      //         .replaceAll('÷', '/')
+      //         .replaceAll('π', '3.141592653589793')
+      //         .replaceAllMapped(
+      //             RegExp(r'(?<![\d.])e'), (m) => '2.718281828459045');
+
+      //     // Check if we have a binary operation
+      //     RegExp binaryOpPattern = RegExp(r'(.+)([\+\-\*\/])([0-9.]+)$');
+      //     Match? match = binaryOpPattern.firstMatch(tempExpression);
+
+      //     double result;
+
+      //     if (match != null) {
+      //       // We have a binary operation like "8+3"
+      //       String leftExpr = match.group(1) ?? '';
+      //       String operator = match.group(2) ?? '';
+      //       String rightExpr = match.group(3) ?? '';
+
+      //       double rightNum = double.parse(rightExpr);
+      //       double percentValue = rightNum / 100;
+
+      //       // For + and -, calculate percentage of left operand
+      //       if (operator == '+' || operator == '-') {
+      //         try {
+      //           Expression exp = Expression(leftExpr);
+      //           var evalResult = exp.eval();
+
+      //           if (evalResult != null) {
+      //             double leftValue = evalResult.toDouble();
+      //             double percentOfLeft = leftValue * percentValue;
+
+      //             if (operator == '+') {
+      //               result = leftValue + percentOfLeft;
+      //             } else {
+      //               result = leftValue - percentOfLeft;
+      //             }
+      //           } else {
+      //             // Fallback to simple percentage
+      //             result = percentValue;
+      //           }
+      //         } catch (e) {
+      //           // Fallback to simple percentage
+      //           result = percentValue;
+      //         }
+      //       } else {
+      //         // For * and /, evaluate the complete expression with the percentage value
+      //         try {
+      //           // Create the expression with the percentage value
+      //           String evalExpr = leftExpr + operator + percentValue.toString();
+      //           Expression exp = Expression(evalExpr);
+      //           var evalResult = exp.eval();
+
+      //           if (evalResult != null) {
+      //             result = evalResult.toDouble();
+      //           } else {
+      //             // Fallback to simple percentage
+      //             result = percentValue;
+      //           }
+      //         } catch (e) {
+      //           debugPrint("Error evaluating * or / with percentage: $e");
+      //           // Fallback to simple percentage
+      //           result = percentValue;
+      //         }
+      //       }
+      //     } else {
+      //       // Simple percentage: just divide by 100
+      //       double value = double.parse(tempExpression);
+      //       result = value / 100;
+      //     }
+
+      //     // Update the UI
+      //     setState(() {
+      //       // Keep the original expression and add %
+      //       _rawExpression = '$currentText%';
+      //       _inputController.text = formatExpression(_rawExpression);
+      //       _inputController.selection = TextSelection.collapsed(
+      //         offset: _inputController.text.length,
+      //       );
+
+      //       // Show the result immediately
+      //       answer = formatNumber(result);
+      //     });
+      //   } catch (e) {
+      //     debugPrint("Error calculating percentage: $e");
+      //     // If there's an error, just append % and don't calculate
+      //     setState(() {
+      //       _rawExpression = '$currentText%';
+      //       _inputController.text = formatExpression(_rawExpression);
+      //       _inputController.selection = TextSelection.collapsed(
+      //         offset: _inputController.text.length,
+      //       );
+      //     });
+      //   }
+      //   return;
+
+      // case '%':
+      //   String currentText = _rawExpression;
+      //   debugPrint(
+      //       "Percentage button pressed. Current expression: '$currentText'");
+
+      //   // If expression is empty, do nothing
+      //   if (currentText.isEmpty) {
+      //     return;
+      //   }
+
+      //   // If last action was evaluation, start fresh with the answer
+      //   if (_lastActionWasEval) {
+      //     if (answer.isNotEmpty &&
+      //         answer != "Error" &&
+      //         !answer.contains("Infinity")) {
+      //       // Use the answer as the base value
+      //       String cleanAnswer = answer.replaceAll(',', '');
+      //       double value = double.tryParse(cleanAnswer) ?? 0;
+      //       value = value / 100; // Convert to percentage
+
+      //       setState(() {
+      //         _rawExpression = value.toString();
+      //         _inputController.text = formatExpression(_rawExpression);
+      //         _inputController.selection = TextSelection.collapsed(
+      //           offset: _inputController.text.length,
+      //         );
+      //         _lastActionWasEval = false;
+      //         _animationController.reset();
+      //         answer = '';
+      //         evaluateExpression();
+      //       });
+      //     }
+      //     return;
+      //   }
+
+      //   // Process the percentage calculation immediately
+      //   try {
+      //     // Create a temporary expression to evaluate
+      //     String tempExpression = currentText;
+
+      //     // Remove commas for calculation
+      //     tempExpression = tempExpression.replaceAll(',', '');
+
+      //     // Prepare the expression for evaluation
+      //     tempExpression = tempExpression
+      //         .replaceAll('×', '*')
+      //         .replaceAll('÷', '/')
+      //         .replaceAll('π', '3.141592653589793')
+      //         .replaceAllMapped(
+      //             RegExp(r'(?<![\d.])e'), (m) => '2.718281828459045');
+
+      //     // Check if we have a binary operation
+      //     RegExp binaryOpPattern = RegExp(r'(.+)([\+\-\*\/])([0-9.]+)$');
+      //     Match? match = binaryOpPattern.firstMatch(tempExpression);
+
+      //     double result;
+
+      //     if (match != null) {
+      //       // We have a binary operation like "8+3"
+      //       String leftExpr = match.group(1) ?? '';
+      //       String operator = match.group(2) ?? '';
+      //       String rightExpr = match.group(3) ?? '';
+
+      //       double rightNum = double.parse(rightExpr);
+      //       double percentValue = rightNum / 100;
+
+      //       // For + and -, calculate percentage of left operand
+      //       if (operator == '+' || operator == '-') {
+      //         try {
+      //           Expression exp = Expression(leftExpr);
+      //           var evalResult = exp.eval();
+
+      //           if (evalResult != null) {
+      //             double leftValue = evalResult.toDouble();
+      //             double percentOfLeft = leftValue * percentValue;
+
+      //             if (operator == '+') {
+      //               result = leftValue + percentOfLeft;
+      //             } else {
+      //               result = leftValue - percentOfLeft;
+      //             }
+      //           } else {
+      //             // Fallback to simple percentage
+      //             result = percentValue;
+      //           }
+      //         } catch (e) {
+      //           // Fallback to simple percentage
+      //           result = percentValue;
+      //         }
+      //       } else {
+      //         // For * and /, evaluate the complete expression with the percentage value
+      //         try {
+      //           // Create the expression with the percentage value
+      //           String evalExpr = leftExpr + operator + percentValue.toString();
+      //           Expression exp = Expression(evalExpr);
+      //           var evalResult = exp.eval();
+
+      //           if (evalResult != null) {
+      //             result = evalResult.toDouble();
+      //           } else {
+      //             // Fallback to simple percentage
+      //             result = percentValue;
+      //           }
+      //         } catch (e) {
+      //           debugPrint("Error evaluating * or / with percentage: $e");
+      //           // Fallback to simple percentage
+      //           result = percentValue;
+      //         }
+      //       }
+      //     } else {
+      //       // Simple percentage: just divide by 100
+      //       double value = double.parse(tempExpression);
+      //       result = value / 100;
+      //     }
+
+      //     // Update the UI
+      //     setState(() {
+      //       // Keep the original expression and add %
+      //       _rawExpression = '$currentText%';
+      //       _inputController.text = formatExpression(_rawExpression);
+      //       _inputController.selection = TextSelection.collapsed(
+      //         offset: _inputController.text.length,
+      //       );
+
+      //       // Show the result immediately
+      //       answer = formatNumber(result);
+      //     });
+      //   } catch (e) {
+      //     debugPrint("Error calculating percentage: $e");
+      //     // If there's an error, just append % and don't calculate
+      //     setState(() {
+      //       _rawExpression = '$currentText%';
+      //       _inputController.text = formatExpression(_rawExpression);
+      //       _inputController.selection = TextSelection.collapsed(
+      //         offset: _inputController.text.length,
+      //       );
+      //     });
+      //   }
+      //   return;
+
+      case '%':
+        String currentText = _rawExpression;
+        debugPrint(
+            "Percentage button pressed. Current expression: '$currentText'");
+
+        // If expression is empty, do nothing
+        if (currentText.isEmpty) {
+          return;
+        }
+
+        // If last action was evaluation, start fresh with the answer
+        if (_lastActionWasEval) {
+          if (answer.isNotEmpty &&
+              answer != "Error" &&
+              !answer.contains("Infinity")) {
+            // Use the answer as the base value
+            String cleanAnswer = answer.replaceAll(',', '');
+            double value = double.tryParse(cleanAnswer) ?? 0;
+            value = value / 100; // Convert to percentage
+
+            setState(() {
+              _rawExpression = value.toString();
+              _inputController.text = formatExpression(_rawExpression);
+              _inputController.selection = TextSelection.collapsed(
+                offset: _inputController.text.length,
               );
-              final tokens = <String>[];
-              int index = 0;
-              pastedText = pastedText.replaceAll(
-                ' ',
-                '',
-              ); // Normalize spaces
-              while (index < pastedText.length) {
-                final substring = pastedText.substring(index);
-                final match = tokenPattern.firstMatch(substring);
-                if (match == null) {
-                  index++;
-                  continue;
-                }
-                tokens.add(match.group(0)!);
-                index += match.end;
-              }
-              debugPrint("Tokens: $tokens");
-              // Clean numbers and rebuild expression
-              final buffer = StringBuffer();
-              for (var token in tokens) {
-                if (RegExp(r'^[+\-*/×÷%^()]+$').hasMatch(token)) {
-                  // Operator or parenthesis
-                  buffer.write(token);
-                } else if (RegExp(
-                  r'^(sin|cos|tan|log|sqrt|π|e|X|Y)$',
-                ).hasMatch(token)) {
-                  // Function or constant
-                  buffer.write(token);
-                } else {
-                  // Number: Parse and clean
-                  try {
-                    final number = numberFormat.parse(token);
-                    buffer.write(
-                      number
-                          .toStringAsFixed(
-                            number.truncateToDouble() == number ? 0 : 3,
-                          )
-                          .replaceAll(RegExp(r'0+$'), '')
-                          .replaceAll(RegExp(r'\.$'), ''),
-                    );
-                  } catch (e) {
-                    debugPrint("Failed to parse number '$token': $e");
-                    showOverlayMessage('Invalid number in clipboard');
-                    return;
-                  }
-                }
-              }
-              final cleanedText = buffer.toString();
-              debugPrint("Cleaned pasted text: '$cleanedText'");
-              buffer.clear();
-              buffer.write(currentText.substring(0, cursorPos));
-              // Insert multiplication if pasting after a number/constant
-              // if (endsWithNumberOrParenOrConst.hasMatch(textBeforeCursor)) {
-              //   buffer.write('*');
-              //   newCursorPos += 1;
-              //   debugPrint("Inserted multiplication operator before paste");
-              // }
-              buffer.write(cleanedText);
-              buffer.write(currentText.substring(cursorPos));
-              newCursorPos += cleanedText.length;
-              evaluateAfter = !isEndingWithOperator.hasMatch(cleanedText) &&
-                  !isEndingWithOpenParen.hasMatch(cleanedText);
-              debugPrint("Updating text with pasted content");
-              updateText(buffer.toString(), newCursorPos);
-            }).catchError((e, stackTrace) {
-              debugPrint("Clipboard access error: $e");
-              debugPrint("Stack trace: $stackTrace");
-              if (mounted) {
-                showOverlayMessage('Error pasting from clipboard');
-              }
+              _lastActionWasEval = false;
+              _animationController.reset();
+              answer = '';
+              evaluateExpression();
             });
           }
-        }).catchError((e, stackTrace) {
-          debugPrint("Validation error: $e");
-          debugPrint("Stack trace: $stackTrace");
+          return;
+        }
+
+        // Process the percentage calculation immediately
+        try {
+          // Create a temporary expression to evaluate
+          String tempExpression = currentText;
+
+          // Remove commas for calculation
+          tempExpression = tempExpression.replaceAll(',', '');
+
+          // Prepare the expression for evaluation
+          tempExpression = tempExpression
+              .replaceAll('×', '*')
+              .replaceAll('÷', '/')
+              .replaceAll('π', '3.141592653589793')
+              .replaceAllMapped(
+                  RegExp(r'(?<![\d.])e'), (m) => '2.718281828459045');
+
+          // Check if we have a binary operation
+          RegExp binaryOpPattern = RegExp(r'(.+)([\+\-\*\/])([0-9.]+)$');
+          Match? match = binaryOpPattern.firstMatch(tempExpression);
+
+          double result;
+
+          if (match != null) {
+            // We have a binary operation like "8+3"
+            String leftExpr = match.group(1) ?? '';
+            String operator = match.group(2) ?? '';
+            String rightExpr = match.group(3) ?? '';
+
+            double rightNum = double.parse(rightExpr);
+            double percentValue = rightNum / 100;
+
+            // For + and -, calculate percentage of left operand
+            if (operator == '+' || operator == '-') {
+              try {
+                Expression exp = Expression(leftExpr);
+                var evalResult = exp.eval();
+
+                if (evalResult != null) {
+                  double leftValue = evalResult.toDouble();
+                  double percentOfLeft = leftValue * percentValue;
+
+                  if (operator == '+') {
+                    result = leftValue + percentOfLeft;
+                  } else {
+                    result = leftValue - percentOfLeft;
+                  }
+                } else {
+                  // Fallback to simple percentage
+                  result = percentValue;
+                }
+              } catch (e) {
+                // Fallback to simple percentage
+                result = percentValue;
+              }
+            } else {
+              // For * and /, evaluate the complete expression with the percentage value
+              try {
+                // Create the expression with the percentage value
+                String evalExpr = leftExpr + operator + percentValue.toString();
+                Expression exp = Expression(evalExpr);
+                var evalResult = exp.eval();
+
+                if (evalResult != null) {
+                  result = evalResult.toDouble();
+                } else {
+                  // Fallback to simple percentage
+                  result = percentValue;
+                }
+              } catch (e) {
+                debugPrint("Error evaluating * or / with percentage: $e");
+                // Fallback to simple percentage
+                result = percentValue;
+              }
+            }
+          } else {
+            // Simple percentage: just divide by 100
+            double value = double.parse(tempExpression);
+            result = value / 100;
+          }
+
+          // Update the UI
+          setState(() {
+            // Keep the original expression and add %
+            _rawExpression = '$currentText%';
+            _inputController.text = formatExpression(_rawExpression);
+            _inputController.selection = TextSelection.collapsed(
+              offset: _inputController.text.length,
+            );
+
+            // Show the result immediately
+            answer = formatNumber(result);
+          });
+        } catch (e) {
+          debugPrint("Error calculating percentage: $e");
+          // If there's an error, just append % and don't calculate
+          setState(() {
+            _rawExpression = '$currentText%';
+            _inputController.text = formatExpression(_rawExpression);
+            _inputController.selection = TextSelection.collapsed(
+              offset: _inputController.text.length,
+            );
+          });
+        }
+        return;
+
+      // case '%':
+      //   String currentText = _rawExpression;
+      //   debugPrint(
+      //       "Percentage button pressed. Current expression: '$currentText'");
+
+      //   // If expression is empty, do nothing
+      //   if (currentText.isEmpty) {
+      //     return;
+      //   }
+
+      //   // If last action was evaluation, start fresh with the answer
+      //   if (_lastActionWasEval) {
+      //     if (answer.isNotEmpty &&
+      //         answer != "Error" &&
+      //         !answer.contains("Infinity")) {
+      //       // Use the answer as the base value
+      //       String cleanAnswer = answer.replaceAll(',', '');
+      //       double value = double.tryParse(cleanAnswer) ?? 0;
+      //       value = value / 100; // Convert to percentage
+
+      //       setState(() {
+      //         _rawExpression = value.toString();
+      //         _inputController.text = formatExpression(_rawExpression);
+      //         _inputController.selection = TextSelection.collapsed(
+      //           offset: _inputController.text.length,
+      //         );
+      //         _lastActionWasEval = false;
+      //         _animationController.reset();
+      //         answer = '';
+      //         evaluateExpression();
+      //       });
+      //     }
+      //     return;
+      //   }
+
+      //   // Process the percentage calculation immediately
+      //   try {
+      //     // Create a temporary expression to evaluate
+      //     String tempExpression = currentText;
+
+      //     // Remove commas for calculation
+      //     tempExpression = tempExpression.replaceAll(',', '');
+
+      //     // Prepare the expression for evaluation
+      //     tempExpression = tempExpression
+      //         .replaceAll('×', '*')
+      //         .replaceAll('÷', '/')
+      //         .replaceAll('π', '3.141592653589793')
+      //         .replaceAllMapped(
+      //             RegExp(r'(?<![\d.])e'), (m) => '2.718281828459045');
+
+      //     // Check if we have a binary operation
+      //     RegExp binaryOpPattern = RegExp(r'(.+)([\+\-\*\/])([0-9.]+)$');
+      //     Match? match = binaryOpPattern.firstMatch(tempExpression);
+
+      //     double result;
+
+      //     if (match != null) {
+      //       // We have a binary operation like "8+3"
+      //       String leftExpr = match.group(1) ?? '';
+      //       String operator = match.group(2) ?? '';
+      //       String rightExpr = match.group(3) ?? '';
+
+      //       double rightNum = double.parse(rightExpr);
+      //       double percentValue = rightNum / 100;
+
+      //       // For + and -, calculate percentage of left operand
+      //       if (operator == '+' || operator == '-') {
+      //         try {
+      //           Expression exp = Expression(leftExpr);
+      //           var evalResult = exp.eval();
+
+      //           if (evalResult != null) {
+      //             double leftValue = evalResult.toDouble();
+      //             double percentOfLeft = leftValue * percentValue;
+
+      //             if (operator == '+') {
+      //               result = leftValue + percentOfLeft;
+      //             } else {
+      //               result = leftValue - percentOfLeft;
+      //             }
+      //           } else {
+      //             // Fallback to simple percentage
+      //             result = percentValue;
+      //           }
+      //         } catch (e) {
+      //           // Fallback to simple percentage
+      //           result = percentValue;
+      //         }
+      //       } else {
+      //         // For * and /, evaluate the complete expression with the percentage value
+      //         try {
+      //           // Create the expression with the percentage value
+      //           String evalExpr = leftExpr + operator + percentValue.toString();
+      //           Expression exp = Expression(evalExpr);
+      //           var evalResult = exp.eval();
+
+      //           if (evalResult != null) {
+      //             result = evalResult.toDouble();
+      //           } else {
+      //             // Fallback to simple percentage
+      //             result = percentValue;
+      //           }
+      //         } catch (e) {
+      //           debugPrint("Error evaluating * or / with percentage: $e");
+      //           // Fallback to simple percentage
+      //           result = percentValue;
+      //         }
+      //       }
+      //     } else {
+      //       // Simple percentage: just divide by 100
+      //       double value = double.parse(tempExpression);
+      //       result = value / 100;
+      //     }
+
+      //     // Update the UI
+      //     setState(() {
+      //       // Keep the original expression and add %
+      //       _rawExpression = '$currentText%';
+      //       _inputController.text = formatExpression(_rawExpression);
+      //       _inputController.selection = TextSelection.collapsed(
+      //         offset: _inputController.text.length,
+      //       );
+
+      //       // Show the result immediately
+      //       answer = formatNumber(result);
+      //     });
+      //   } catch (e) {
+      //     debugPrint("Error calculating percentage: $e");
+      //     // If there's an error, just append % and don't calculate
+      //     setState(() {
+      //       _rawExpression = '$currentText%';
+      //       _inputController.text = formatExpression(_rawExpression);
+      //       _inputController.selection = TextSelection.collapsed(
+      //         offset: _inputController.text.length,
+      //       );
+      //     });
+      //   }
+      //   return;
+
+      case '=':
+        if (_rawExpression.isNotEmpty) {
+          evaluateExpression(finalEvaluation: true).then((_) {
+            if (answer != "Error" &&
+                answer != "" &&
+                !answer.contains("Infinity")) {
+              addToHistory(_rawExpression, answer);
+              if (mounted) {
+                setState(() {
+                  _animationController.forward();
+                  _lastActionWasEval = true;
+                });
+              }
+            }
+          });
+        }
+        return;
+
+      // Handle digits (0-9)
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
+        // If last action was evaluation and there's a valid answer, start fresh
+        if (_lastActionWasEval &&
+            answer.isNotEmpty &&
+            answer != "Error" &&
+            !answer.contains("Infinity")) {
           if (mounted) {
-            showOverlayMessage('Error validating clipboard');
+            setState(() {
+              _rawExpression = buttonText;
+              _inputController.text = buttonText;
+              _inputController.selection =
+                  const TextSelection.collapsed(offset: 1);
+              _lastActionWasEval = false;
+              _animationController.reset();
+              answer = '';
+              evaluateExpression();
+            });
           }
-        });
-        return;
-    }
+          return;
+        }
+        break; // Continue with normal digit handling if not after evaluation
 
-    // Handle deletion
-    if (buttonText == 'del') {
-      if (currentSelection.isValid && !currentSelection.isCollapsed) {
-        buffer.write(currentText.substring(0, currentSelection.start));
-        buffer.write(currentText.substring(currentSelection.end));
-        newCursorPos = currentSelection.start;
-      } else if (cursorPos > 0) {
-        const functionTokens = [
-          'sin(',
-          'cos(',
-          'tan(',
-          'log(',
-          'sqrt(',
-          '10^(',
-          '√(',
-        ];
-        String? matchedToken;
-        for (final token in functionTokens) {
-          if (textBeforeCursor.endsWith(token)) {
-            matchedToken = token;
-            break;
+      // Handle operators
+      case '+':
+      case '-':
+      case '×':
+      case '÷':
+      case '^':
+        // If last action was evaluation, use the answer as the base for next operation
+        if (_lastActionWasEval &&
+            answer != "Error" &&
+            !answer.contains("Infinity")) {
+          if (mounted) {
+            setState(() {
+              _rawExpression = answer.replaceAll(',', '') + buttonText;
+              _inputController.text = formatExpression(_rawExpression);
+              _inputController.selection =
+                  TextSelection.collapsed(offset: _inputController.text.length);
+              _lastActionWasEval = false;
+              _animationController.reset();
+              answer = '';
+              evaluateExpression();
+            });
+          }
+          return;
+        }
+        break;
+
+      case 'X':
+      case 'Y':
+        handleVariableInput(buttonText);
+        return;
+
+      case 'shft':
+        debugPrint("Shift button pressed. Current state: isShift=$isShift");
+        if (mounted) {
+          setState(() {
+            isShift = !isShift;
+            debugPrint("Shift state changed to: isShift=$isShift");
+            evaluateExpression();
+          });
+        }
+        return;
+
+      case 'DEG':
+        if (mounted) {
+          setState(() {
+            isDeg = !isDeg;
+            evaluateExpression();
+          });
+        }
+        return;
+
+      case '.':
+        // Check if the current number already has a decimal point
+        final parts = _rawExpression.split(RegExp(r'[+\-*/×÷]'));
+        if (parts.isEmpty || !parts.last.contains('.')) {
+          final currentText = _rawExpression;
+          final buffer = StringBuffer();
+          // If expression is empty or ends with an operator, add "0." instead of just "."
+          if (currentText.isEmpty ||
+              isEndingWithOperator.hasMatch(currentText)) {
+            buffer.write(currentText);
+            buffer.write('0.');
+          } else {
+            buffer.write(currentText);
+            buffer.write('.');
+          }
+          if (mounted) {
+            setState(() {
+              _rawExpression = buffer.toString();
+              String formattedText = formatExpression(_rawExpression);
+              _inputController.text = formattedText;
+              _inputController.selection = TextSelection.collapsed(
+                offset: formattedText.length,
+              );
+              evaluateExpression();
+            });
           }
         }
-        if (matchedToken != null) {
-          buffer.write(
-            currentText.substring(0, cursorPos - matchedToken.length),
-          );
-          buffer.write(currentText.substring(cursorPos));
-          newCursorPos = cursorPos - matchedToken.length;
+        return;
+
+      // Example for sqrt - apply similar changes to other function handlers
+      case '√':
+        String currentText = _rawExpression;
+        final currentSelection = _inputController.selection;
+        final cursorPos = currentSelection.baseOffset >= 0
+            ? currentSelection.baseOffset.clamp(0, _inputController.text.length)
+            : _inputController.text.length;
+
+        // Convert from formatted position to raw position
+        final rawCursorPos =
+            _formattedToRawPositionMap[cursorPos] ?? currentText.length;
+
+        final buffer = StringBuffer();
+        debugPrint("sqrt button pressed. Current expression: '$currentText'");
+
+        // If last action was evaluation, we should start fresh
+        if (_lastActionWasEval) {
+          // If there's an answer, use it as the input for the square root
+          if (answer.isNotEmpty &&
+              answer != "Error" &&
+              !answer.contains("Infinity")) {
+            // Use the answer as the input for square root
+            buffer.write('√(');
+            buffer.write(
+                answer.replaceAll(',', '')); // Remove commas from the answer
+            buffer.write(')');
+          } else {
+            // Just start a new square root expression
+            buffer.write('√(');
+          }
+          _lastActionWasEval = false; // Reset the flag
         } else {
-          buffer.write(currentText.substring(0, cursorPos - 1));
-          buffer.write(currentText.substring(cursorPos));
-          newCursorPos = cursorPos - 1;
+          // Normal behavior when not following an evaluation
+          String textBeforeCursor = currentText.substring(0, rawCursorPos);
+          String textAfterCursor = currentText.substring(rawCursorPos);
+
+          if (currentText.isEmpty) {
+            buffer.write('√(');
+          }
+          // If there's a number before √, add multiplication
+          else if (endsWithNumberOrParenOrConst.hasMatch(textBeforeCursor)) {
+            buffer.write(textBeforeCursor);
+            buffer.write('*√(');
+            buffer.write(textAfterCursor);
+          } else {
+            buffer.write(textBeforeCursor);
+            buffer.write('√(');
+            buffer.write(textAfterCursor);
+          }
+        }
+
+        String newExpression = buffer.toString();
+        int newRawCursorPos = _lastActionWasEval
+            ? newExpression.length - 1
+            : rawCursorPos + (newExpression.length - currentText.length);
+
+        if (mounted) {
+          setState(() {
+            _rawExpression = newExpression;
+            _rawCursorPosition = newRawCursorPos;
+
+            String formattedText = formatExpression(_rawExpression);
+            int formattedCursorPos =
+                _rawToFormattedPositionMap[_rawCursorPosition] ??
+                    formattedText.length;
+
+            _inputController.value = TextEditingValue(
+              text: formattedText,
+              selection: TextSelection.collapsed(offset: formattedCursorPos),
+            );
+            debugPrint("Updated sqrt expression: '$_rawExpression'");
+            evaluateExpression();
+          });
+        }
+        return;
+
+      case 'log':
+        String currentText = _rawExpression;
+        final buffer = StringBuffer();
+        debugPrint("Log button pressed. Current state: isShift=$isShift");
+
+        if (isShift) {
+          // Natural log (ln)
+          if (currentText.isNotEmpty &&
+              endsWithNumberOrParenOrConst.hasMatch(currentText)) {
+            buffer.write(currentText);
+            buffer.write('*ln(');
+          } else {
+            buffer.write(currentText);
+            buffer.write('ln(');
+          }
+        } else {
+          // Common log (log10)
+          if (currentText.isNotEmpty &&
+              endsWithNumberOrParenOrConst.hasMatch(currentText)) {
+            buffer.write(currentText);
+            buffer.write('*log(');
+          } else {
+            buffer.write(currentText);
+            buffer.write('log(');
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _rawExpression = buffer.toString();
+            _inputController.text = formatExpression(_rawExpression);
+            _inputController.selection =
+                TextSelection.collapsed(offset: _inputController.text.length);
+            debugPrint("Updated log expression: '$_rawExpression'");
+            evaluateExpression();
+          });
+        }
+        return;
+
+      case 'sin':
+      case 'cos':
+      case 'tan':
+        String currentText = _rawExpression;
+        final buffer = StringBuffer();
+        debugPrint("Trig button pressed: $buttonText, isShift=$isShift");
+
+        String functionName = isShift ? "$buttonText⁻¹" : buttonText;
+
+        if (currentText.isNotEmpty &&
+            endsWithNumberOrParenOrConst.hasMatch(currentText)) {
+          buffer.write(currentText);
+          buffer.write('*$functionName(');
+        } else {
+          buffer.write(currentText);
+          buffer.write('$functionName(');
+        }
+
+        if (mounted) {
+          setState(() {
+            _rawExpression = buffer.toString();
+            _inputController.text = formatExpression(_rawExpression);
+            _inputController.selection =
+                TextSelection.collapsed(offset: _inputController.text.length);
+            debugPrint("Updated trig expression: '$_rawExpression'");
+            evaluateExpression();
+          });
+        }
+        return;
+    }
+
+    // Handle regular button input
+    final currentText = _rawExpression;
+    final currentSelection = _inputController.selection;
+    final buffer = StringBuffer();
+
+    // Get the current cursor position in raw expression
+    final cursorPos = currentSelection.baseOffset >= 0
+        ? currentSelection.baseOffset.clamp(0, _inputController.text.length)
+        : _inputController.text.length;
+
+    // Convert from formatted position to raw position
+    final rawCursorPos =
+        _formattedToRawPositionMap[cursorPos] ?? currentText.length;
+
+    // If last action was evaluation and we're starting a new number
+    if (_lastActionWasEval && isDigit.hasMatch(buttonText)) {
+      // Clear the expression and reset
+      _rawExpression = '';
+      buffer.clear();
+      buffer.write(buttonText);
+
+      if (mounted) {
+        setState(() {
+          _rawExpression = buffer.toString();
+          _rawCursorPosition = 1; // Set cursor after the digit
+
+          String formattedText = formatExpression(_rawExpression);
+          int formattedCursorPos =
+              _rawToFormattedPositionMap[_rawCursorPosition] ??
+                  formattedText.length;
+
+          _inputController.value = TextEditingValue(
+            text: formattedText,
+            selection: TextSelection.collapsed(
+              offset: formattedCursorPos,
+            ),
+          );
+          _lastActionWasEval = false;
+          _animationController.reset();
+          answer = '';
+          evaluateExpression();
+        });
+      }
+      return;
+    }
+
+    // Check if the button is an operator
+    final isOperator = RegExp(r'[+\-*/×÷]').hasMatch(buttonText);
+    if (isOperator) {
+      // Get text before cursor and check if it ends with an operator
+      String textBeforeCursor = currentText.substring(0, rawCursorPos);
+      String trimmedBefore = textBeforeCursor.trim();
+
+      // Allow minus after another operator for negative numbers, but prevent double minus
+      if (isEndingWithOperator.hasMatch(trimmedBefore)) {
+        if (buttonText == '-' && !trimmedBefore.endsWith('-')) {
+          // Allow minus for negative numbers
+          buffer.write(currentText.substring(0, rawCursorPos));
+          buffer.write(buttonText);
+          buffer.write(currentText.substring(rawCursorPos));
+        } else {
+          // Replace existing operator with new one
+          buffer.write(currentText.substring(0, rawCursorPos - 1));
+          buffer.write(buttonText);
+          buffer.write(currentText.substring(rawCursorPos));
         }
       } else {
-        buffer.write(currentText);
-      }
-
-      final newText = buffer.toString();
-      evaluateAfter = newText.isNotEmpty &&
-          !isEndingWithOperator.hasMatch(newText) &&
-          !isEndingWithOpenParen.hasMatch(newText);
-      updateText(newText, newCursorPos);
-      return;
-    }
-
-    // Handle input after successful evaluation
-    if (_lastActionWasEval &&
-        answer.isNotEmpty &&
-        answer != "Error" &&
-        !answer.contains("Infinity")) {
-      if (isOperator.hasMatch(buttonText)) {
-        // Operator: Start with answer
-        buffer.write(answer);
+        // Normal operator insertion
+        buffer.write(currentText.substring(0, rawCursorPos));
         buffer.write(buttonText);
-        newCursorPos = answer.length + buttonText.length;
-        evaluateAfter = false;
-        setState(() {
-          _rawExpression = buffer.toString();
-          String formattedText = formatExpression(_rawExpression);
-          _inputController.value = TextEditingValue(
-            text: formattedText,
-            selection: TextSelection.collapsed(offset: formattedText.length),
-          );
-          _lastActionWasEval = false;
-          _animationController.reset(); // Reset for new input
-          if (evaluateAfter) {
-            evaluateExpression();
-          } else if (answer.isNotEmpty) answer = '';
-        });
-        return;
-      } else if (![
-        '(',
-        ')',
-        'hist',
-        'Home',
-        'Unit',
-        'Settings',
-        'Calc',
-        'Copy',
-        'Paste',
-      ].contains(buttonText)) {
-        // Non-operator: Start fresh
-        buffer.write(buttonText);
-        newCursorPos = buttonText.length;
-        evaluateAfter = false;
-        setState(() {
-          _rawExpression = buffer.toString();
-          String formattedText = formatExpression(_rawExpression);
-          _inputController.value = TextEditingValue(
-            text: formattedText,
-            selection: TextSelection.collapsed(offset: formattedText.length),
-          );
-          _lastActionWasEval = false;
-          _animationController.reset(); // Reset for new input
-          if (evaluateAfter) {
-            evaluateExpression();
-          } else if (answer.isNotEmpty) answer = '';
-        });
-        return;
+        buffer.write(currentText.substring(rawCursorPos));
       }
+    } else {
+      // For non-operators, proceed with normal insertion
+      buffer.write(currentText.substring(0, rawCursorPos));
+      buffer.write(buttonText);
+      buffer.write(currentText.substring(rawCursorPos));
     }
 
-    // Reset animation if completed
-    if (_animationController.status == AnimationStatus.completed) {
-      _animationController.reset();
-      if (answer.isNotEmpty && mounted) setState(() => answer = '');
-    }
+    int newRawCursorPos = rawCursorPos + buttonText.length;
 
-    // Determine text to insert
-    String textToInsert = buttonText;
-    final trimmedBefore = textBeforeCursor.trim();
-    final endsWithNumOrParenOrConst = endsWithNumberOrParenOrConst.hasMatch(
-      trimmedBefore,
-    );
-    final endsWithFactorial = textBeforeCursor.endsWith('!');
+    if (mounted) {
+      setState(() {
+        _rawExpression = buffer.toString();
+        _rawCursorPosition = newRawCursorPos;
 
-    // Handle '00' button
-    // Handle '00' button
-    // In the buttonPressed method, modify the handling of the "00" button:
-    // In the buttonPressed method, modify the handling of the "00" button:
-    if (buttonText == '00') {
-      // Get the number segment before the cursor
-      final numberSegment =
-          RegExp(r'(\d*\.?\d*)$').firstMatch(textBeforeCursor)?.group(0) ?? '';
-      debugPrint("Number segment for '00': '$numberSegment'");
+        String formattedText = formatExpression(_rawExpression);
+        int formattedCursorPos =
+            _rawToFormattedPositionMap[_rawCursorPosition] ??
+                formattedText.length;
 
-      if (currentText.isEmpty || textBeforeCursor.isEmpty) {
-        // Empty input: Insert single "0"
-        textToInsert = '0';
-        evaluateAfter = false;
-      } else if (numberSegment.isEmpty && !textBeforeCursor.endsWith('.')) {
-        // After operators, parentheses, or functions: Do nothing
-        textToInsert = '';
-        evaluateAfter = false;
-      } else if (textBeforeCursor.endsWith('.')) {
-        // After decimal point (e.g., "0.", "1."): Append "00"
-        textToInsert = '00';
-        evaluateAfter = true;
-      } else if (RegExp(r'^\d*\.?\d+$').hasMatch(numberSegment) &&
-          numberSegment != '0') {
-        // After a digit or decimal number ending in digit (e.g., "1", "1.0"): Append "00"
-        textToInsert = '00';
-        evaluateAfter = true;
-      } else if (numberSegment == '0' && !textBeforeCursor.endsWith('0.')) {
-        // Single "0" (not "0."): Do nothing
-        textToInsert = '';
-        evaluateAfter = false;
-      } else {
-        // Other cases: Do nothing
-        textToInsert = '';
-        evaluateAfter = false;
-      }
-    } else if (endsWithFactorial && !isOperator.hasMatch(buttonText)) {
-      textToInsert = '';
-      evaluateAfter = false;
-    } else if (isTrigFun.hasMatch('$buttonText(') ||
-        isLogFun.hasMatch('$buttonText(') ||
-        buttonText == '√') {
-      textToInsert =
-          endsWithNumOrParenOrConst ? '*$buttonText(' : '$buttonText(';
-      evaluateAfter = false;
-    } else if (buttonText == '10ˣ') {
-      textToInsert = endsWithNumOrParenOrConst ? '*10^(' : '10^(';
-      evaluateAfter = false;
-    } else if (buttonText == '.') {
-      final numberSegment =
-          RegExp(r'(\d*\.?\d*)$').firstMatch(textBeforeCursor)?.group(0) ?? '';
-      if (numberSegment.contains('.')) {
-        textToInsert = ''; // Prevent multiple decimals
-      } else if (cursorPos == 0 ||
-          isOperator.hasMatch(charBefore) ||
-          charBefore == '(') {
-        textToInsert = '0.'; // Start with 0. for empty, operator, or (
-      } else if (numberSegment == '0' && cursorPos == textBeforeCursor.length) {
-        textToInsert = '.'; // After single 0 at end, append . to make 0.
-      } else {
-        textToInsert = '.'; // Append decimal after other digits
-      }
-      evaluateAfter = false;
-    } else if (buttonText == '0') {
-      final numberSegment =
-          RegExp(r'(\d*\.?\d*)$').firstMatch(textBeforeCursor)?.group(0) ?? '';
-      textToInsert = numberSegment == '0' ? '' : '0';
-      evaluateAfter = false; // Don’t evaluate for single digits
-    } else if (buttonText == '%') {
-      textToInsert = (endsWithNumOrParenOrConst ||
-              isOperator.hasMatch(charBefore) ||
-              charBefore.isEmpty)
-          ? '%'
-          : '';
-      evaluateAfter = textToInsert.isNotEmpty;
-    } else if (buttonText == '!') {
-      textToInsert = endsWithNumOrParenOrConst ? '!' : '';
-      evaluateAfter = textToInsert.isNotEmpty;
-    } else if (isOperator.hasMatch(buttonText)) {
-      evaluateAfter = false;
-      if (isEndingWithOperator.hasMatch(trimmedBefore) &&
-          !(trimmedBefore.endsWith('(') &&
-              (buttonText == '+' || buttonText == '-'))) {
-        buffer.write(currentText.substring(0, trimmedBefore.length - 1));
-        buffer.write(buttonText);
-        buffer.write(currentText.substring(cursorPos));
-        newCursorPos = trimmedBefore.length;
-        updateText(buffer.toString(), newCursorPos);
-        return;
-      } else if (charBefore == '(' && buttonText != '-' && buttonText != '+') {
-        textToInsert = '';
-      } else if (currentText.isEmpty &&
-          (buttonText == '-' || buttonText == '+')) {
-        textToInsert = buttonText;
-      } else if (endsWithNumOrParenOrConst || buttonText == '-') {
-        textToInsert = buttonText;
-      } else {
-        textToInsert = currentText.isEmpty ? '' : buttonText;
-      }
-    } else if (buttonText == '(') {
-      textToInsert = endsWithNumOrParenOrConst ? '*(' : '(';
-      evaluateAfter = false;
-    } else if (buttonText == ')') {
-      textToInsert = ('('.allMatches(currentText).length >
-                  ')'.allMatches(currentText).length &&
-              !isEndingWithOperator.hasMatch(trimmedBefore) &&
-              !trimmedBefore.endsWith('('))
-          ? ')'
-          : '';
-      evaluateAfter = textToInsert.isNotEmpty;
-    } else if (buttonText == 'π' || buttonText == 'e') {
-      textToInsert = endsWithNumOrParenOrConst ? '*$buttonText' : buttonText;
-      evaluateAfter = true;
-      if (buttonText == 'π') {
-        textToInsert = endsWithNumOrParenOrConst ? '*\u03C0' : '\u03C0';
-        debugPrint("Pi text to insert: '$textToInsert'");
-        evaluateAfter = true;
-      }
-      // Constants can trigger evaluation
-    } else if (RegExp(r'^\d+$').hasMatch(buttonText)) {
-      final numberSegment =
-          RegExp(r'(\d*\.?\d*)$').firstMatch(textBeforeCursor)?.group(0) ?? '';
-      if (numberSegment == '0' &&
-          !textBeforeCursor.endsWith('0.') &&
-          cursorPos == textBeforeCursor.length) {
-        textToInsert = buttonText; // Replace leading 0 with digit (e.g., 0 → 2)
-        buffer.write(currentText.substring(0, cursorPos - 1)); // Remove the 0
-        buffer.write(textToInsert);
-        buffer.write(currentText.substring(cursorPos));
-        newCursorPos = cursorPos;
-      } else {
-        textToInsert = buttonText;
-        buffer.write(currentText.substring(0, cursorPos));
-        buffer.write(textToInsert);
-        buffer.write(currentText.substring(cursorPos));
-        newCursorPos = cursorPos + textToInsert.length;
-      }
-      evaluateAfter = false;
-      updateText(buffer.toString(), newCursorPos);
-      return;
-    }
-
-    // Insert text if applicable
-    if (textToInsert.isNotEmpty) {
-      buffer.write(currentText.substring(0, cursorPos));
-      buffer.write(textToInsert);
-      buffer.write(currentText.substring(cursorPos));
-      newCursorPos = cursorPos + textToInsert.length;
-      updateText(buffer.toString(), newCursorPos);
-    } else if (!evaluateAfter && mounted && answer.isNotEmpty) {
-      setState(() => answer = '');
+        _inputController.value = TextEditingValue(
+          text: formattedText,
+          selection: TextSelection.collapsed(
+            offset: formattedCursorPos,
+          ),
+        );
+        _lastActionWasEval = false;
+        evaluateExpression();
+      });
     }
   }
 
-  // --- Variable Handling ---
+  String _handlePercentageCalculations(String expression) {
+    // Handle simple cases first (no operators)
+    if (!RegExp(r'[+\-*/×÷]').hasMatch(expression) &&
+        expression.endsWith('%')) {
+      // Simple percentage: 8% -> 0.08
+      String numStr = expression.substring(0, expression.length - 1);
+      double num = double.parse(numStr);
+      return (num / 100).toString();
+    }
+
+    // For expressions with operators, we need to parse them carefully
+    List<String> tokens = [];
+    String currentToken = '';
+    bool hasPercent = false;
+
+    // Tokenize the expression
+    for (int i = 0; i < expression.length; i++) {
+      String char = expression[i];
+
+      if (RegExp(r'[+\-*/×÷]').hasMatch(char)) {
+        if (currentToken.isNotEmpty) {
+          tokens.add(currentToken);
+          currentToken = '';
+        }
+        tokens.add(char);
+      } else if (char == '%') {
+        hasPercent = true;
+        // Process the percentage
+        if (currentToken.isNotEmpty) {
+          double value = double.parse(currentToken);
+          value = value / 100;
+
+          // Check if we need to apply the percentage to a previous value
+          if (tokens.length >= 2 &&
+              RegExp(r'[+\-]').hasMatch(tokens[tokens.length - 1])) {
+            // For + and -, apply percentage to the previous number
+            // String operator = tokens[tokens.length - 1];
+            String prevNumStr = tokens[tokens.length - 2];
+
+            if (RegExp(r'^[0-9.]+$').hasMatch(prevNumStr)) {
+              double prevNum = double.parse(prevNumStr);
+              value =
+                  prevNum * value; // Calculate percentage of previous number
+            }
+          }
+
+          currentToken = value.toString();
+          tokens.add(currentToken);
+          currentToken = '';
+        }
+      } else {
+        currentToken += char;
+      }
+    }
+
+    // Add any remaining token
+    if (currentToken.isNotEmpty) {
+      tokens.add(currentToken);
+    }
+
+    // If no percentage was found, return the original expression
+    if (!hasPercent) {
+      return expression;
+    }
+
+    // Rebuild the expression
+    return tokens.join('');
+  }
+
+  String formatExpression(String rawExpression) {
+    if (rawExpression.isEmpty) return '';
+
+    debugPrint("Formatting raw expression: '$rawExpression'");
+
+    // First, remove any existing commas to avoid double-formatting
+    String cleanExpression = rawExpression;
+
+    // Reset position maps
+    _formattedToRawPositionMap.clear();
+    _rawToFormattedPositionMap.clear();
+
+    // Initialize buffers for building the formatted expression
+    StringBuffer formattedBuffer = StringBuffer();
+    int rawPos = 0;
+    int formattedPos = 0;
+    StringBuffer currentNumberBuffer = StringBuffer();
+
+    void formatAndAppendNumber() {
+      if (currentNumberBuffer.isEmpty) return;
+
+      String numberStr = currentNumberBuffer.toString();
+      String formattedNumber;
+
+      // Handle decimal numbers
+      if (numberStr.contains('.')) {
+        List<String> parts = numberStr.split('.');
+        String integerPart = parts[0];
+        String decimalPart = parts[1];
+
+        // Format integer part with commas
+        try {
+          if (integerPart.isEmpty) {
+            formattedNumber = "0.$decimalPart";
+          } else {
+            double value = double.parse(integerPart);
+            String formattedInt = _numberFormat.format(value);
+            formattedNumber = "$formattedInt.$decimalPart";
+          }
+        } catch (e) {
+          formattedNumber = numberStr;
+        }
+      } else {
+        // Format integer
+        try {
+          double value = double.parse(numberStr);
+          formattedNumber = _numberFormat.format(value);
+        } catch (e) {
+          formattedNumber = numberStr;
+        }
+      }
+
+      // Map positions taking into account added commas
+      int originalLength = numberStr.length;
+      int formattedLength = formattedNumber.length;
+
+      // Create position mappings for the number
+      for (int i = 0; i < originalLength; i++) {
+        int adjustedFormattedPos = formattedPos + i;
+        for (int j = 0; j < formattedLength; j++) {
+          if (formattedNumber[j] == ',' && j <= adjustedFormattedPos) {
+            adjustedFormattedPos++;
+          }
+        }
+        int currentRawPos = rawPos - originalLength + i;
+        _rawToFormattedPositionMap[currentRawPos] = adjustedFormattedPos;
+        _formattedToRawPositionMap[adjustedFormattedPos] = currentRawPos;
+      }
+
+      formattedBuffer.write(formattedNumber);
+      formattedPos += formattedLength;
+      currentNumberBuffer.clear();
+    }
+
+    // Process each character
+    for (int i = 0; i < cleanExpression.length; i++) {
+      String char = cleanExpression[i];
+
+      if (RegExp(r'[0-9.]').hasMatch(char)) {
+        // Accumulate digits and decimals
+        currentNumberBuffer.write(char);
+      } else {
+        // Format and append any accumulated number
+        formatAndAppendNumber();
+
+        // Handle operators and other characters with 1:1 mapping
+        formattedBuffer.write(char);
+        _rawToFormattedPositionMap[i] = formattedPos;
+        _formattedToRawPositionMap[formattedPos] = i;
+        formattedPos++;
+      }
+      rawPos++;
+    }
+
+    // Format and append any remaining number
+    formatAndAppendNumber();
+
+    // Add final position mapping if needed
+    if (!_rawToFormattedPositionMap.containsKey(rawExpression.length)) {
+      _rawToFormattedPositionMap[rawExpression.length] = formattedPos;
+    }
+    if (!_formattedToRawPositionMap.containsKey(formattedPos)) {
+      _formattedToRawPositionMap[formattedPos] = rawExpression.length;
+    }
+
+    final result = formattedBuffer.toString();
+    debugPrint("Final formatted expression: '$result'");
+    debugPrint("Raw to formatted map: $_rawToFormattedPositionMap");
+    debugPrint("Formatted to raw map: $_formattedToRawPositionMap");
+
+    return result;
+  }
+
   void handleVariableInput(String varName) {
     if (answer.isNotEmpty &&
         answer != "Error" &&
         !answer.contains("Infinity")) {
       try {
-        double valueToStore = double.parse(answer);
+        // Remove commas from the answer before parsing
+        double valueToStore = double.parse(answer.replaceAll(',', ''));
         if (mounted) {
           setState(() {
             variables[varName] = valueToStore;
             _rawExpression = '';
+            _rawCursorPosition = 0;
             _inputController.clear();
             _animationController.reset();
             answer = "$varName = ${formatNumber(valueToStore)}";
@@ -1178,31 +1677,46 @@ class _CalcPageState extends State<CalcPage>
         }
       }
     } else {
+      // Using the variable in an expression
       String currentText = _rawExpression;
       TextSelection currentSelection = _inputController.selection;
       int cursorPos = currentSelection.baseOffset >= 0
-          ? currentSelection.baseOffset
-          : currentText.length;
-      cursorPos = cursorPos.clamp(0, currentText.length);
+          ? currentSelection.baseOffset.clamp(0, _inputController.text.length)
+          : _inputController.text.length;
+
+      // Convert from formatted position to raw position
+      final rawCursorPos =
+          _formattedToRawPositionMap[cursorPos] ?? currentText.length;
+
       StringBuffer buffer = StringBuffer();
-      int newCursorPos = cursorPos;
       String textToInsert = varName;
-      String textBeforeCursor = currentText.substring(0, cursorPos);
+      String textBeforeCursor = currentText.substring(0, rawCursorPos);
+
       if (endsWithNumberOrParenOrConst.hasMatch(textBeforeCursor.trim())) {
         textToInsert = '*$varName';
       }
-      buffer.write(currentText.substring(0, cursorPos));
+
+      buffer.write(currentText.substring(0, rawCursorPos));
       buffer.write(textToInsert);
-      buffer.write(currentText.substring(cursorPos));
-      newCursorPos = cursorPos + textToInsert.length;
+      buffer.write(currentText.substring(rawCursorPos));
+
+      int newRawCursorPos = rawCursorPos + textToInsert.length;
+
       if (mounted) {
         setState(() {
           _rawExpression = buffer.toString();
+          _rawCursorPosition = newRawCursorPos;
+
           String formattedText = formatExpression(_rawExpression);
+          int formattedCursorPos =
+              _rawToFormattedPositionMap[_rawCursorPosition] ??
+                  formattedText.length;
+
           _inputController.value = TextEditingValue(
             text: formattedText,
-            selection: TextSelection.collapsed(offset: formattedText.length),
+            selection: TextSelection.collapsed(offset: formattedCursorPos),
           );
+          _validatePositionMaps();
           _animationController.reset();
           evaluateExpression();
         });
@@ -1210,250 +1724,127 @@ class _CalcPageState extends State<CalcPage>
     }
   }
 
-  // Helper to convert numbers potentially in scientific notation (as string)
-  // into a parser-friendly format like (mantissa * 10^exponent)
-  String formatScientificForInput(String scientificString) {
-    if (!scientificString.contains('e')) {
-      // If it's not scientific, return as is
-      return scientificString;
-    }
+  void handlePaste() async {
     try {
-      // Attempt to parse the scientific string back to a double
-      double value = double.parse(scientificString);
-
-      // Use toStringAsExponential to reliably get mantissa and exponent
-      // We might choose a high precision here to avoid losing info
-      String exponential = value.toStringAsExponential(
-        15,
-      ); // Use high precision
-
-      // Split into mantissa and exponent parts
-      List<String> parts = exponential.toLowerCase().split('e');
-      if (parts.length == 2) {
-        String mantissa = parts[0];
-        String exponent = parts[1];
-        // Remove leading '+' from exponent if present
-        if (exponent.startsWith('+')) {
-          exponent = exponent.substring(1);
-        }
-        // Ensure exponent is treated as integer (it should be)
-        int expValue = int.parse(exponent);
-
-        // Construct the string for the parser
-        // Handle mantissa=1.0 cases simply as 10^exp
-        if (double.tryParse(mantissa) == 1.0) {
-          return '(10^($expValue))'; // Parser understands negative exponent here
-        } else {
-          return '($mantissa * 10^($expValue))';
-        }
+      // Validate clipboard content
+      bool isValid = await validateAndPasteClipboard(context);
+      if (!isValid || !mounted) {
+        return;
       }
-      // Fallback if splitting fails
-      return scientificString;
-    } catch (e) {
-      // Fallback if parsing fails
-      debugPrint("Error converting scientific string '$scientificString': $e");
-      return scientificString; // Return original on error
-    }
-  }
 
-  // Add this before formatNumber
-  // String addCommasToNumberString(String numString) {
-  //   bool isNegative = numString.startsWith('-');
-  //   String absString = isNegative ? numString.substring(1) : numString;
-  //   int dotIndex = absString.indexOf('.');
-  //   String intPart =
-  //       dotIndex >= 0 ? absString.substring(0, dotIndex) : absString;
-  //   String decPart = dotIndex >= 0 ? absString.substring(dotIndex + 1) : '';
-
-  //   String formattedInt = '';
-  //   int count = 0;
-  //   for (int i = intPart.length - 1; i >= 0; i--) {
-  //     if (count == 3 && i > 0) {
-  //       formattedInt = ',$formattedInt';
-  //       count = 0;
-  //     }
-  //     formattedInt = intPart[i] + formattedInt;
-  //     count++;
-  //   }
-
-  //   String result = formattedInt;
-  //   if (decPart.isNotEmpty) {
-  //     result += '.$decPart';
-  //   }
-  //   if (isNegative) {
-  //     result = '-$result';
-  //   }
-  //   return result;
-  // }
-
-  String formatExpression(String rawExpression) {
-    if (rawExpression.isEmpty) return '';
-
-    debugPrint("Formatting raw expression: '$rawExpression'");
-    final tokens = <String>[];
-    final allPatterns = RegExp(
-      r'(-?\d*\.?\d*|[+\-*/×÷%^()]|[\u03C0]|\b(sin|cos|tan|log|sqrt|e|X|Y)\b)',
-      unicode: true,
-    );
-
-    String remaining = rawExpression;
-    while (remaining.isNotEmpty) {
-      final match = allPatterns.firstMatch(remaining);
-      if (match == null) {
-        debugPrint("No match for: '$remaining'");
-        tokens.add(remaining[0]);
-        remaining = remaining.substring(1);
-        continue;
-      }
-      final token = match.group(0)!;
-      if (token.isEmpty) {
-        debugPrint("Empty token detected, skipping");
-        remaining = remaining.substring(1);
-        continue;
-      }
-      tokens.add(token);
-      debugPrint("Adding token: '$token'");
-      remaining = remaining.substring(match.end);
-    }
-    debugPrint("Total tokens: ${tokens.length}");
-    debugPrint("Tokens: $tokens");
-
-    final numberFormat = NumberFormat("#,##0.###", "en_US");
-    final functionPattern = RegExp(r'\b(sin|cos|tan|log|sqrt)\b');
-    final constantPattern = RegExp(r'[\u03C0eXY]', unicode: true);
-
-    for (int i = 0; i < tokens.length; i++) {
-      if (RegExp(r'^-?\d*\.?\d*$').hasMatch(tokens[i]) &&
-          !functionPattern.hasMatch(tokens[i]) &&
-          !constantPattern.hasMatch(tokens[i]) &&
-          tokens[i].isNotEmpty &&
-          tokens[i] != '-') {
-        String token = tokens[i];
-        bool hasTrailingDecimal = token.endsWith('.') && !token.endsWith('..');
-        try {
-          if (token.contains('.')) {
-            final parts = token.split('.');
-            String intPart = parts[0].isEmpty ? '0' : parts[0];
-            String decPart =
-                parts.length > 1 && parts[1].isNotEmpty ? parts[1] : '';
-            if (intPart == '0' || intPart == '-0') {
-              // Preserve leading 0 for decimals like 0.2
-              tokens[i] = '$intPart.$decPart';
-            } else {
-              // Format integer part with commas
-              final number = double.parse(intPart);
-              tokens[i] = '${numberFormat.format(number)}.$decPart';
-            }
-          } else {
-            // Handle integers
-            double number = double.parse(token);
-            tokens[i] = numberFormat.format(number);
-          }
-          // Append trailing decimal only if the token is just a number ending with .
-          if (hasTrailingDecimal && !token.contains('.')) {
-            tokens[i] += '.';
-          }
-        } catch (e) {
-          debugPrint("Failed to parse number '${tokens[i]}': $e");
-          tokens[i] = token; // Preserve original on error
-        }
-      }
-    }
-
-    final result = StringBuffer();
-    for (int i = 0; i < tokens.length; i++) {
-      result.write(tokens[i]);
-      if (i < tokens.length - 1 && tokens[i] != '(' && tokens[i + 1] != ')') {
-        result.write(' ');
-      }
-    }
-    debugPrint("Formatted expression: '${result.toString()}'");
-    return result.toString();
-  }
-
-  // --- Helper Functions ---
-
-  // Validate pasted content and show snackbar if invalid
-  // Validate pasted content and show snackbar if invalid
-  Future<bool> validateAndPasteClipboard(BuildContext context) async {
-    debugPrint("Entering _validateAndPasteClipboard");
-
-    try {
-      debugPrint("Attempting to access clipboard");
+      // Get clipboard data
       final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-      debugPrint("Clipboard data retrieved: $clipboardData");
+      String pastedText = clipboardData?.text?.trim() ?? '';
+      if (pastedText.isEmpty) {
+        showOverlayMessage('Clipboard is empty');
+        return;
+      }
+
+      // Clean the pasted text
+      pastedText = pastedText.replaceAll(' ', '');
+
+      // Get current state
+      final currentText = _rawExpression;
+      final currentSelection = _inputController.selection;
+      final cursorPos = currentSelection.baseOffset >= 0
+          ? currentSelection.baseOffset.clamp(0, _inputController.text.length)
+          : _inputController.text.length;
+
+      // Convert from formatted position to raw position
+      final rawCursorPos =
+          _formattedToRawPositionMap[cursorPos] ?? currentText.length;
+
+      // Determine if we need to insert a multiplication operator
+      String textBeforeCursor = currentText.substring(0, rawCursorPos);
+      String textToInsert = pastedText;
+
+      // If pasting after a number/constant/closing parenthesis, add multiplication
+      if (rawCursorPos > 0 &&
+          endsWithNumberOrParenOrConst.hasMatch(textBeforeCursor) &&
+          (isDigit.hasMatch(pastedText[0]) ||
+              pastedText[0] == '(' ||
+              RegExp(r'[πe]').hasMatch(pastedText[0]))) {
+        textToInsert = '*$pastedText';
+      }
+
+      // Create new expression
+      String newExpression = currentText.substring(0, rawCursorPos) +
+          textToInsert +
+          currentText.substring(rawCursorPos);
+
+      int newRawCursorPos = rawCursorPos + textToInsert.length;
+
+      // Update UI
+      setState(() {
+        _rawExpression = newExpression;
+        _rawCursorPosition = newRawCursorPos;
+
+        String formattedText = formatExpression(newExpression);
+        int formattedCursorPos =
+            _rawToFormattedPositionMap[_rawCursorPosition] ??
+                formattedText.length;
+
+        _inputController.value = TextEditingValue(
+          text: formattedText,
+          selection: TextSelection.collapsed(
+            offset: formattedCursorPos,
+          ),
+        );
+
+        _validatePositionMaps();
+        _lastActionWasEval = false;
+        evaluateExpression();
+      });
+
+      // Show success message
+      showOverlayMessage('Expression pasted');
+    } catch (e, stackTrace) {
+      debugPrint("Paste error: $e");
+      debugPrint("Stack trace: $stackTrace");
+      showOverlayMessage('Error pasting from clipboard');
+    }
+  }
+
+  Future<bool> validateAndPasteClipboard(BuildContext context) async {
+    try {
+      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
       final pastedText = clipboardData?.text?.trim() ?? '';
-      debugPrint("Clipboard content: '$pastedText'");
 
       if (pastedText.isEmpty) {
-        debugPrint("Clipboard is empty, showing overlay message");
         showOverlayMessage('Clipboard is empty');
-        debugPrint("Validation failed: Clipboard is empty");
         return false;
       }
 
-      // Simplified: Allow digits, commas, decimal points, operators, parentheses, spaces, and specific functions/constants
-      final validPattern = RegExp(
-        r'^[0-9,\.\+\-*/×÷%^()\s]*(sin|cos|tan|log|sqrt|π|e|X|Y)?$',
-        caseSensitive: false,
-      );
-
-      if (!validPattern.hasMatch(pastedText)) {
-        debugPrint("Invalid characters detected, showing overlay message");
+      // Allow digits, operators, parentheses, decimal points, and specific functions/constants
+      final validChars = RegExp(
+          r'^[0-9,\.\+\-*/×÷%^()\s]*(sin|cos|tan|log|ln|sqrt|π|e|X|Y)?$');
+      if (!validChars.hasMatch(pastedText)) {
         showOverlayMessage('Invalid characters in clipboard');
-        debugPrint("Validation failed: Invalid characters in '$pastedText'");
         return false;
       }
 
-      // Check for invalid sequences (e.g., multiple operators, multiple dots)
-      final invalidSequence = RegExp(r'[+*\/×÷%^]{2,}|[-]{3,}|[\.]{2,}');
-      if (invalidSequence.hasMatch(pastedText)) {
-        debugPrint("Invalid sequence detected, showing overlay message");
-        showOverlayMessage('Invalid expression format');
-        debugPrint("Validation failed: Invalid sequence in '$pastedText'");
-        return false;
-      }
+      // Check for invalid sequences
+      final invalidSequences = [
+        RegExp(r'[+*\/×÷%^]{2,}'), // Multiple operators
+        RegExp(r'[-]{3,}'), // More than two minus signs
+        RegExp(r'[\.]{2,}') // Multiple decimal points
+      ];
 
-      // Split by operators/parentheses to validate numbers and functions
-      final parts = pastedText.split(RegExp(r'([+\-*/×÷%^()]+)'));
-      final numberFormat = NumberFormat(
-        "#,##0.###",
-        "en_US",
-      ); // Matches _numberFormat
-      for (var part in parts) {
-        final trimmedPart = part.trim();
-        if (trimmedPart.isEmpty) continue;
-        // Allow operators/parentheses
-        if (RegExp(r'^[+\-*/×÷%^()]+$').hasMatch(trimmedPart)) {
-          continue;
-        }
-        // Allow functions and constants
-        if (RegExp(r'^(sin|cos|tan|log|sqrt|π|e|X|Y)$').hasMatch(trimmedPart)) {
-          continue;
-        }
-        // Validate as number
-        try {
-          numberFormat.parse(trimmedPart);
-        } catch (e) {
-          debugPrint("Invalid number format: '$trimmedPart', error: $e");
-          showOverlayMessage('Invalid number format in clipboard');
-          debugPrint("Validation failed: Invalid number in '$trimmedPart'");
+      for (var pattern in invalidSequences) {
+        if (pattern.hasMatch(pastedText)) {
+          showOverlayMessage('Invalid expression format');
           return false;
         }
       }
 
-      debugPrint("Validation passed for: '$pastedText'");
       return true;
-    } catch (e, stackTrace) {
-      debugPrint("Error accessing clipboard: $e");
-      debugPrint("Stack trace: $stackTrace");
+    } catch (e) {
+      debugPrint("Clipboard validation error: $e");
       showOverlayMessage('Error accessing clipboard');
       return false;
     }
   }
 
-  // Show a Cupertino-style snackbar
-  // Show a Cupertino-style snackbar for errors
   void showErrorSnackbar(BuildContext context, String message) {
     debugPrint("Showing error overlay: $message");
     if (mounted) {
@@ -1473,28 +1864,29 @@ class _CalcPageState extends State<CalcPage>
   }
 
   String formatNumber(double number) {
-    if (number.isNaN) return 'Error';
-    if (number.isInfinite) return number.isNegative ? '-Infinity' : 'Infinity';
+    if (number.isInfinite || number.isNaN) {
+      return 'Error';
+    }
 
-    const double largeThreshold = 1e12;
-    const double smallThreshold = 1e-9;
-    const int exponentialPrecision = 6;
-    const int fixedPrecision = 10;
+    // Handle very large or very small numbers with scientific notation
+    if (number.abs() > 1e9 || (number != 0 && number.abs() < 1e-9)) {
+      return number.toStringAsExponential(9);
+    }
 
-    if (number != 0 &&
-        (number.abs() >= largeThreshold || number.abs() < smallThreshold)) {
-      return number.toStringAsExponential(exponentialPrecision);
-    } else {
-      String formatted;
-      if (number == number.truncateToDouble()) {
-        formatted = number.truncate().toString();
-      } else {
-        formatted = number
-            .toStringAsFixed(fixedPrecision)
-            .replaceAll(RegExp(r'0+$'), '')
-            .replaceAll(RegExp(r'\.$'), '');
+    return _numberFormat.format(number);
+  }
+
+  String formatScientificForInput(String scientificNumber) {
+    // Convert scientific notation to a regular decimal string
+    try {
+      double number = double.parse(scientificNumber);
+      if (number.abs() > 1e9 || (number != 0 && number.abs() < 1e-9)) {
+        return number.toStringAsExponential(9);
       }
-      return _numberFormat.format(double.parse(formatted));
+      return _numberFormat.format(number);
+    } catch (e) {
+      debugPrint('Error formatting scientific number: $e');
+      return scientificNumber;
     }
   }
 
@@ -1568,17 +1960,25 @@ class _CalcPageState extends State<CalcPage>
     final screenHeight = mediaQueryData.size.height;
 
     Color buttonColor = buttonColors[text] ?? CupertinoColors.white;
+    if (text == 'shft') {
+      buttonColor = isShift
+          ? CupertinoColors.systemIndigo.withOpacity(0.4)
+          : CupertinoColors.systemIndigo.withOpacity(0.3);
+    }
+
     Color fgColor = (text == 'del')
         ? CupertinoColors.systemRed
         : CupertinoColors.label; // AC handled by background
     if (text == '=') fgColor = CupertinoColors.white;
+
     Widget content;
     if (text == 'shft') {
       content = Icon(
-        FluentIcons.keyboard_shift_uppercase_24_filled,
-        size: btnSize * 0.40,
-        color: fgColor,
-      );
+          isShift
+              ? FluentIcons.keyboard_shift_uppercase_24_filled
+              : FluentIcons.keyboard_shift_uppercase_24_regular,
+          size: btnSize * 0.40,
+          color: fgColor);
     } else if (text == 'unit') {
       content = Icon(
         FluentIcons.diversity_24_regular,
@@ -1622,11 +2022,27 @@ class _CalcPageState extends State<CalcPage>
         color: fgColor,
       );
     } else {
-      final String displayText =
-          (text == 'DEG') ? (isDeg ? 'DEG' : 'RAD') : text;
+      String displayText = (text == 'DEG') ? (isDeg ? 'DEG' : 'RAD') : text;
+      if (isShift && {'sin', 'cos', 'tan', 'log'}.contains(displayText)) {
+        switch (displayText) {
+          case 'sin':
+            displayText = 'sin⁻¹'; // Unicode superscript -1
+            break;
+          case 'cos':
+            displayText = 'cos⁻¹';
+            break;
+          case 'tan':
+            displayText = 'tan⁻¹';
+            break;
+          case 'log':
+            displayText = 'ln';
+            break;
+        }
+      }
       if (text == 'DEG') {
         buttonColor = isDeg ? buttonColors['DEG']! : buttonColors['RAD']!;
       }
+
       content = Text(
         displayText,
         style: TextStyle(
@@ -1639,7 +2055,7 @@ class _CalcPageState extends State<CalcPage>
     }
 
     final bool applyShadow = !(text == 'hist' ||
-        text == 'Unit' ||
+        text == 'unit' ||
         text == 'Calc' ||
         text == 'Copy' ||
         text == 'Paste' ||
@@ -1684,7 +2100,6 @@ class _CalcPageState extends State<CalcPage>
         screenHeight - safeAreaPadding.top - safeAreaPadding.bottom;
     final double horizontalPadding = screenWidth * 0.04;
     final double verticalPadding = effectiveScreenHeight * 0.01;
-    final double displayButtonGap = effectiveScreenHeight * 0.015;
 
     final double buttonGridVerticalSpacing = effectiveScreenHeight * 0.01;
     final double approxButtonSpacing = screenWidth * 0.025;
@@ -1712,8 +2127,6 @@ class _CalcPageState extends State<CalcPage>
               Expanded(
                 flex: 4,
                 child: Container(
-                  // color: CupertinoColors.systemGreen,
-                  // color: CupertinoColors.systemGroupedBackground,
                   padding: EdgeInsets.symmetric(
                     horizontal: screenWidth * 0.03,
                     vertical: effectiveScreenHeight * 0.01,
@@ -1733,30 +2146,37 @@ class _CalcPageState extends State<CalcPage>
                               ),
                               child: GestureDetector(
                                 onTap: () {
-                                  // When tapped, reset or append the result to the expression
+                                  // Replace the existing onTap handler in the mini history section with this corrected version
+
+                                  // Simply use the result directly without any special processing
                                   String cleanedResult =
                                       entry.result.replaceAll(',', '');
-                                  String textForInput =
-                                      formatScientificForInput(cleanedResult);
+
                                   setState(() {
                                     String newExpression;
-                                    // Check if expression ends with an operator
                                     if (_rawExpression.isNotEmpty &&
                                         isEndingWithOperator
                                             .hasMatch(_rawExpression.trim())) {
-                                      newExpression = _rawExpression +
-                                          textForInput; // Append after operator
-                                    } else {
                                       newExpression =
-                                          textForInput; // Reset for numbers, constants, parentheses, or empty
+                                          _rawExpression + cleanedResult;
+                                    } else {
+                                      newExpression = cleanedResult;
                                     }
                                     _rawExpression = newExpression;
-                                    _inputController.text =
+                                    String formattedText =
                                         formatExpression(newExpression);
-                                    _inputController.selection =
-                                        TextSelection.collapsed(
-                                      offset: _inputController.text.length,
+                                    _rawCursorPosition = newExpression.length;
+                                    int formattedCursorPos =
+                                        _rawToFormattedPositionMap[
+                                                _rawCursorPosition] ??
+                                            formattedText.length;
+
+                                    _inputController.value = TextEditingValue(
+                                      text: formattedText,
+                                      selection: TextSelection.collapsed(
+                                          offset: formattedCursorPos),
                                     );
+                                    _validatePositionMaps();
                                     answer = '';
                                     _animationController.reset();
                                     evaluateExpression();
@@ -1802,7 +2222,8 @@ class _CalcPageState extends State<CalcPage>
                               parent: AlwaysScrollableScrollPhysics(),
                             ),
                             child: IntrinsicWidth(
-                              child: CupertinoTextField(
+                              child: // In the build method, update the onTap handler for the CupertinoTextField
+                                  CupertinoTextField(
                                 controller: _inputController,
                                 readOnly: true,
                                 showCursor: true,
@@ -1825,6 +2246,14 @@ class _CalcPageState extends State<CalcPage>
                                         TextSelection.collapsed(
                                       offset: _inputController.text.length,
                                     );
+                                  } else {
+                                    // Update raw cursor position when user taps
+                                    int formattedPos =
+                                        _inputController.selection.baseOffset;
+                                    _rawCursorPosition =
+                                        _formattedToRawPositionMap[
+                                                formattedPos] ??
+                                            _rawExpression.length;
                                   }
                                 },
                               ),
@@ -1865,8 +2294,6 @@ class _CalcPageState extends State<CalcPage>
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'Inter',
                                     ),
-                                    // maxLines: 1,
-                                    // overflow: TextOverflow.ellipsis
                                   ),
                                 ),
                               ),
@@ -1881,14 +2308,11 @@ class _CalcPageState extends State<CalcPage>
               ),
               SizedBox(
                 height: screenHeight * 0.048,
-                // color: CupertinoColors.activeBlue,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // Add your four buttons here. You can reuse buildButton or create new ones.
                     buildButton(context, "Copy", btnSize),
                     buildButton(context, "Paste", btnSize),
-
                     for (int i = 0; i < 3; i++)
                       SizedBox(width: buttonWidthWithMargin),
                   ],
@@ -1897,33 +2321,29 @@ class _CalcPageState extends State<CalcPage>
               // --- Button Grid ---
               Expanded(
                 flex: 6,
-                child: Container(
-                  // color: CupertinoColors.activeBlue,
-                  // color: CupertinoColors.systemCyan,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: List.generate(
-                      (stringList.length / 5).ceil(),
-                      (rowIndex) => Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: buttonGridVerticalSpacing / 2,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: List.generate(5, (columnIndex) {
-                            final index = rowIndex * 5 + columnIndex;
-                            if (index >= stringList.length) {
-                              return SizedBox(
-                                width: btnSize + (btnSize * 0.04 * 2),
-                              );
-                            }
-                            return buildButton(
-                              context,
-                              stringList[index],
-                              btnSize,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(
+                    (stringList.length / 5).ceil(),
+                    (rowIndex) => Padding(
+                      padding: EdgeInsets.symmetric(
+                        vertical: buttonGridVerticalSpacing / 2,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: List.generate(5, (columnIndex) {
+                          final index = rowIndex * 5 + columnIndex;
+                          if (index >= stringList.length) {
+                            return SizedBox(
+                              width: btnSize + (btnSize * 0.04 * 2),
                             );
-                          }),
-                        ),
+                          }
+                          return buildButton(
+                            context,
+                            stringList[index],
+                            btnSize,
+                          );
+                        }),
                       ),
                     ),
                   ),
@@ -1931,21 +2351,14 @@ class _CalcPageState extends State<CalcPage>
               ),
               Container(
                 height: screenHeight * 0.048,
-                // padding: const EdgeInsets.symmetric(
-                //     vertical: 16.0, horizontal: 8.0),
-                // color: CupertinoColors.activeBlue.withOpacity(0.3),
                 color: CupertinoColors.systemGroupedBackground,
-
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment
-                      .spaceAround, // Distribute the 4 buttons evenly
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // Add your four buttons here. You can reuse buildButton or create new ones.
                     buildButton(context, "Calc", bottomBtnSize),
                     buildButton(context, "hist", bottomBtnSize),
                     buildButton(context, "unit", bottomBtnSize),
                     buildButton(context, "Settings", bottomBtnSize),
-                    // ElevatedButton(onPressed: () {}, child: Text("Action 4")),
                   ],
                 ),
               ),
@@ -1956,7 +2369,6 @@ class _CalcPageState extends State<CalcPage>
     );
   }
 
-  // --- History Modal ---
   void showHistory(BuildContext parentContext) {
     showCupertinoModalPopup(
       context: parentContext,
@@ -1991,17 +2403,16 @@ class _CalcPageState extends State<CalcPage>
                 Expanded(
                   child: HistoryPage(
                     history: history,
+                    // In the showHistory method, modify the onExpressionTap callback:
+                    // In the onExpressionTap callback in showHistory method:
                     onExpressionTap: (String resultFromHistory) {
-                      // Clean the result by removing commas
-                      String cleanedResult =
-                          resultFromHistory.replaceAll(',', '');
-                      // Handle scientific notation if needed
-                      String textForInput =
-                          formatScientificForInput(cleanedResult);
+                      // Remove commas for calculation purposes
+                      String rawResult = resultFromHistory.replaceAll(',', '');
+
                       debugPrint(
-                        "History tapped. Original result: '$resultFromHistory', "
-                        "Cleaned: '$cleanedResult', Using for input: '$textForInput'",
-                      );
+                          "History tapped. Original result: '$resultFromHistory', "
+                          "Raw for calculation: '$rawResult'");
+
                       if (mounted) {
                         setState(() {
                           String newExpression;
@@ -2010,17 +2421,24 @@ class _CalcPageState extends State<CalcPage>
                               isEndingWithOperator
                                   .hasMatch(_rawExpression.trim())) {
                             newExpression = _rawExpression +
-                                textForInput; // Append after operator
+                                rawResult; // Use raw version for calculation
                           } else {
                             newExpression =
-                                textForInput; // Reset for numbers, constants, parentheses, or empty
+                                rawResult; // Use raw version for calculation
                           }
+
                           _rawExpression = newExpression;
-                          _inputController.text =
+
+                          // Format the expression for display
+                          String formattedText =
                               formatExpression(newExpression);
-                          _inputController.selection = TextSelection.collapsed(
-                            offset: _inputController.text.length,
+                          _inputController.value = TextEditingValue(
+                            text: formattedText,
+                            selection: TextSelection.collapsed(
+                              offset: formattedText.length,
+                            ),
                           );
+
                           answer = '';
                           _animationController.reset();
                           evaluateExpression();
@@ -2028,11 +2446,156 @@ class _CalcPageState extends State<CalcPage>
                         Navigator.pop(modalContext);
                       }
                     },
+
                     onClear: () {
                       _clearHistory();
                       Navigator.pop(modalContext);
                     },
                   ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void showSettings(BuildContext parentContext) {
+    showCupertinoModalPopup(
+      context: parentContext,
+      builder: (modalContext) {
+        return GestureDetector(
+          onVerticalDragEnd: (details) {
+            if (details.primaryVelocity != null &&
+                details.primaryVelocity! > 200) {
+              Navigator.pop(modalContext);
+            }
+          },
+          child: Container(
+            height: MediaQuery.of(modalContext).size.height * 0.35,
+            decoration: const BoxDecoration(
+              color: CupertinoColors.systemBackground,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Modal Handle
+                Container(
+                  height: 5,
+                  width: 35,
+                  margin: const EdgeInsets.symmetric(vertical: 10.0),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemGrey4,
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+                // Settings List
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    children: [
+                      // Enable Dark Theme Toggle
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Enable Dark Theme",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          CupertinoSwitch(
+                            value:
+                                isDarkThemeEnabled, // Assuming you have this state variable
+                            onChanged: (bool value) {
+                              if (mounted) {
+                                setState(() {
+                                  isDarkThemeEnabled = value;
+                                });
+                              }
+                              Navigator.pop(
+                                  modalContext); // Close modal on change
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showToolsModal(BuildContext parentContext) {
+    showCupertinoModalPopup(
+      context: parentContext,
+      builder: (modalContext) {
+        return GestureDetector(
+          onVerticalDragEnd: (details) {
+            if (details.primaryVelocity != null &&
+                details.primaryVelocity! > 200) {
+              Navigator.pop(modalContext);
+            }
+          },
+          child: Container(
+            height: MediaQuery.of(modalContext).size.height * 0.65,
+            decoration: const BoxDecoration(
+              color: CupertinoColors.systemBackground,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Modal Handle
+                Container(
+                  height: 5,
+                  width: 35,
+                  margin: const EdgeInsets.symmetric(vertical: 10.0),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemGrey4,
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0, vertical: 10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Unit Converter',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        child: const Icon(
+                          CupertinoIcons.xmark_circle_fill,
+                          color: CupertinoColors.systemGrey,
+                        ),
+                        onPressed: () => Navigator.pop(modalContext),
+                      ),
+                    ],
+                  ),
+                ),
+                // Grid Content
+                Expanded(
+                  child: ToolsGridContent(),
                 ),
               ],
             ),
@@ -2075,4 +2638,35 @@ class _CalcPageState extends State<CalcPage>
       overlayEntry.remove();
     });
   }
+
+// Add this method to help debug cursor positioning issues
+// Add this method to validate position maps
+  void _validatePositionMaps() {
+    if (_rawExpression.isEmpty) {
+      _formattedToRawPositionMap = {0: 0};
+      _rawToFormattedPositionMap = {0: 0};
+      return;
+    }
+
+    // Ensure every position in raw expression has a mapping
+    for (int i = 0; i <= _rawExpression.length; i++) {
+      if (!_rawToFormattedPositionMap.containsKey(i)) {
+        debugPrint("Warning: Missing mapping for raw position $i");
+        // Add a fallback mapping
+        _rawToFormattedPositionMap[i] =
+            i.clamp(0, _inputController.text.length);
+      }
+    }
+
+    // Ensure every position in formatted text has a mapping
+    for (int i = 0; i <= _inputController.text.length; i++) {
+      if (!_formattedToRawPositionMap.containsKey(i)) {
+        debugPrint("Warning: Missing mapping for formatted position $i");
+        // Add a fallback mapping
+        _formattedToRawPositionMap[i] = i.clamp(0, _rawExpression.length);
+      }
+    }
+  }
+
+// Call this after formatting in setState blocks
 } // End of _CalcPageState
