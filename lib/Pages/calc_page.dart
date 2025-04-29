@@ -2,23 +2,27 @@ import 'dart:math';
 import 'package:eval_ex/expression.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/calculation_history.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide ThemeMode;
 import 'tools_page.dart';
 import 'history_page.dart';
+// import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pro_calc/Pages/utils_theme_provider.dart';
+import 'settings_page.dart';
 
-class CalcPage extends StatefulWidget {
+class CalcPage extends ConsumerStatefulWidget {
   const CalcPage({super.key});
 
   @override
-  State<CalcPage> createState() => _CalcPageState();
+  ConsumerState<CalcPage> createState() => _CalcPageState();
 }
 
-class _CalcPageState extends State<CalcPage>
+class _CalcPageState extends ConsumerState<CalcPage>
     with SingleTickerProviderStateMixin {
   // --- State Variables ---
   late TextEditingController _inputController;
@@ -530,286 +534,6 @@ class _CalcPageState extends State<CalcPage>
         }
         return;
 
-      // case '%':
-      //   String currentText = _rawExpression;
-      //   debugPrint(
-      //       "Percentage button pressed. Current expression: '$currentText'");
-
-      //   // If expression is empty, do nothing
-      //   if (currentText.isEmpty) {
-      //     return;
-      //   }
-
-      //   // If last action was evaluation, start fresh with the answer
-      //   if (_lastActionWasEval) {
-      //     if (answer.isNotEmpty &&
-      //         answer != "Error" &&
-      //         !answer.contains("Infinity")) {
-      //       // Use the answer as the base value
-      //       String cleanAnswer = answer.replaceAll(',', '');
-      //       double value = double.tryParse(cleanAnswer) ?? 0;
-      //       value = value / 100; // Convert to percentage
-
-      //       setState(() {
-      //         _rawExpression = value.toString();
-      //         _inputController.text = formatExpression(_rawExpression);
-      //         _inputController.selection = TextSelection.collapsed(
-      //           offset: _inputController.text.length,
-      //         );
-      //         _lastActionWasEval = false;
-      //         _animationController.reset();
-      //         answer = '';
-      //         evaluateExpression();
-      //       });
-      //     }
-      //     return;
-      //   }
-
-      //   // Process the percentage calculation immediately
-      //   try {
-      //     // Create a temporary expression to evaluate
-      //     String tempExpression = currentText;
-
-      //     // Remove commas for calculation
-      //     tempExpression = tempExpression.replaceAll(',', '');
-
-      //     // Prepare the expression for evaluation
-      //     tempExpression = tempExpression
-      //         .replaceAll('×', '*')
-      //         .replaceAll('÷', '/')
-      //         .replaceAll('π', '3.141592653589793')
-      //         .replaceAllMapped(
-      //             RegExp(r'(?<![\d.])e'), (m) => '2.718281828459045');
-
-      //     // Check if we have a binary operation
-      //     RegExp binaryOpPattern = RegExp(r'(.+)([\+\-\*\/])([0-9.]+)$');
-      //     Match? match = binaryOpPattern.firstMatch(tempExpression);
-
-      //     double result;
-
-      //     if (match != null) {
-      //       // We have a binary operation like "8+3"
-      //       String leftExpr = match.group(1) ?? '';
-      //       String operator = match.group(2) ?? '';
-      //       String rightExpr = match.group(3) ?? '';
-
-      //       double rightNum = double.parse(rightExpr);
-      //       double percentValue = rightNum / 100;
-
-      //       // For + and -, calculate percentage of left operand
-      //       if (operator == '+' || operator == '-') {
-      //         try {
-      //           Expression exp = Expression(leftExpr);
-      //           var evalResult = exp.eval();
-
-      //           if (evalResult != null) {
-      //             double leftValue = evalResult.toDouble();
-      //             double percentOfLeft = leftValue * percentValue;
-
-      //             if (operator == '+') {
-      //               result = leftValue + percentOfLeft;
-      //             } else {
-      //               result = leftValue - percentOfLeft;
-      //             }
-      //           } else {
-      //             // Fallback to simple percentage
-      //             result = percentValue;
-      //           }
-      //         } catch (e) {
-      //           // Fallback to simple percentage
-      //           result = percentValue;
-      //         }
-      //       } else {
-      //         // For * and /, evaluate the complete expression with the percentage value
-      //         try {
-      //           // Create the expression with the percentage value
-      //           String evalExpr = leftExpr + operator + percentValue.toString();
-      //           Expression exp = Expression(evalExpr);
-      //           var evalResult = exp.eval();
-
-      //           if (evalResult != null) {
-      //             result = evalResult.toDouble();
-      //           } else {
-      //             // Fallback to simple percentage
-      //             result = percentValue;
-      //           }
-      //         } catch (e) {
-      //           debugPrint("Error evaluating * or / with percentage: $e");
-      //           // Fallback to simple percentage
-      //           result = percentValue;
-      //         }
-      //       }
-      //     } else {
-      //       // Simple percentage: just divide by 100
-      //       double value = double.parse(tempExpression);
-      //       result = value / 100;
-      //     }
-
-      //     // Update the UI
-      //     setState(() {
-      //       // Keep the original expression and add %
-      //       _rawExpression = '$currentText%';
-      //       _inputController.text = formatExpression(_rawExpression);
-      //       _inputController.selection = TextSelection.collapsed(
-      //         offset: _inputController.text.length,
-      //       );
-
-      //       // Show the result immediately
-      //       answer = formatNumber(result);
-      //     });
-      //   } catch (e) {
-      //     debugPrint("Error calculating percentage: $e");
-      //     // If there's an error, just append % and don't calculate
-      //     setState(() {
-      //       _rawExpression = '$currentText%';
-      //       _inputController.text = formatExpression(_rawExpression);
-      //       _inputController.selection = TextSelection.collapsed(
-      //         offset: _inputController.text.length,
-      //       );
-      //     });
-      //   }
-      //   return;
-
-      // case '%':
-      //   String currentText = _rawExpression;
-      //   debugPrint(
-      //       "Percentage button pressed. Current expression: '$currentText'");
-
-      //   // If expression is empty, do nothing
-      //   if (currentText.isEmpty) {
-      //     return;
-      //   }
-
-      //   // If last action was evaluation, start fresh with the answer
-      //   if (_lastActionWasEval) {
-      //     if (answer.isNotEmpty &&
-      //         answer != "Error" &&
-      //         !answer.contains("Infinity")) {
-      //       // Use the answer as the base value
-      //       String cleanAnswer = answer.replaceAll(',', '');
-      //       double value = double.tryParse(cleanAnswer) ?? 0;
-      //       value = value / 100; // Convert to percentage
-
-      //       setState(() {
-      //         _rawExpression = value.toString();
-      //         _inputController.text = formatExpression(_rawExpression);
-      //         _inputController.selection = TextSelection.collapsed(
-      //           offset: _inputController.text.length,
-      //         );
-      //         _lastActionWasEval = false;
-      //         _animationController.reset();
-      //         answer = '';
-      //         evaluateExpression();
-      //       });
-      //     }
-      //     return;
-      //   }
-
-      //   // Process the percentage calculation immediately
-      //   try {
-      //     // Create a temporary expression to evaluate
-      //     String tempExpression = currentText;
-
-      //     // Remove commas for calculation
-      //     tempExpression = tempExpression.replaceAll(',', '');
-
-      //     // Prepare the expression for evaluation
-      //     tempExpression = tempExpression
-      //         .replaceAll('×', '*')
-      //         .replaceAll('÷', '/')
-      //         .replaceAll('π', '3.141592653589793')
-      //         .replaceAllMapped(
-      //             RegExp(r'(?<![\d.])e'), (m) => '2.718281828459045');
-
-      //     // Check if we have a binary operation
-      //     RegExp binaryOpPattern = RegExp(r'(.+)([\+\-\*\/])([0-9.]+)$');
-      //     Match? match = binaryOpPattern.firstMatch(tempExpression);
-
-      //     double result;
-
-      //     if (match != null) {
-      //       // We have a binary operation like "8+3"
-      //       String leftExpr = match.group(1) ?? '';
-      //       String operator = match.group(2) ?? '';
-      //       String rightExpr = match.group(3) ?? '';
-
-      //       double rightNum = double.parse(rightExpr);
-      //       double percentValue = rightNum / 100;
-
-      //       // For + and -, calculate percentage of left operand
-      //       if (operator == '+' || operator == '-') {
-      //         try {
-      //           Expression exp = Expression(leftExpr);
-      //           var evalResult = exp.eval();
-
-      //           if (evalResult != null) {
-      //             double leftValue = evalResult.toDouble();
-      //             double percentOfLeft = leftValue * percentValue;
-
-      //             if (operator == '+') {
-      //               result = leftValue + percentOfLeft;
-      //             } else {
-      //               result = leftValue - percentOfLeft;
-      //             }
-      //           } else {
-      //             // Fallback to simple percentage
-      //             result = percentValue;
-      //           }
-      //         } catch (e) {
-      //           // Fallback to simple percentage
-      //           result = percentValue;
-      //         }
-      //       } else {
-      //         // For * and /, evaluate the complete expression with the percentage value
-      //         try {
-      //           // Create the expression with the percentage value
-      //           String evalExpr = leftExpr + operator + percentValue.toString();
-      //           Expression exp = Expression(evalExpr);
-      //           var evalResult = exp.eval();
-
-      //           if (evalResult != null) {
-      //             result = evalResult.toDouble();
-      //           } else {
-      //             // Fallback to simple percentage
-      //             result = percentValue;
-      //           }
-      //         } catch (e) {
-      //           debugPrint("Error evaluating * or / with percentage: $e");
-      //           // Fallback to simple percentage
-      //           result = percentValue;
-      //         }
-      //       }
-      //     } else {
-      //       // Simple percentage: just divide by 100
-      //       double value = double.parse(tempExpression);
-      //       result = value / 100;
-      //     }
-
-      //     // Update the UI
-      //     setState(() {
-      //       // Keep the original expression and add %
-      //       _rawExpression = '$currentText%';
-      //       _inputController.text = formatExpression(_rawExpression);
-      //       _inputController.selection = TextSelection.collapsed(
-      //         offset: _inputController.text.length,
-      //       );
-
-      //       // Show the result immediately
-      //       answer = formatNumber(result);
-      //     });
-      //   } catch (e) {
-      //     debugPrint("Error calculating percentage: $e");
-      //     // If there's an error, just append % and don't calculate
-      //     setState(() {
-      //       _rawExpression = '$currentText%';
-      //       _inputController.text = formatExpression(_rawExpression);
-      //       _inputController.selection = TextSelection.collapsed(
-      //         offset: _inputController.text.length,
-      //       );
-      //     });
-      //   }
-      //   return;
-
       case '%':
         String currentText = _rawExpression;
         debugPrint(
@@ -949,146 +673,6 @@ class _CalcPageState extends State<CalcPage>
           });
         }
         return;
-
-      // case '%':
-      //   String currentText = _rawExpression;
-      //   debugPrint(
-      //       "Percentage button pressed. Current expression: '$currentText'");
-
-      //   // If expression is empty, do nothing
-      //   if (currentText.isEmpty) {
-      //     return;
-      //   }
-
-      //   // If last action was evaluation, start fresh with the answer
-      //   if (_lastActionWasEval) {
-      //     if (answer.isNotEmpty &&
-      //         answer != "Error" &&
-      //         !answer.contains("Infinity")) {
-      //       // Use the answer as the base value
-      //       String cleanAnswer = answer.replaceAll(',', '');
-      //       double value = double.tryParse(cleanAnswer) ?? 0;
-      //       value = value / 100; // Convert to percentage
-
-      //       setState(() {
-      //         _rawExpression = value.toString();
-      //         _inputController.text = formatExpression(_rawExpression);
-      //         _inputController.selection = TextSelection.collapsed(
-      //           offset: _inputController.text.length,
-      //         );
-      //         _lastActionWasEval = false;
-      //         _animationController.reset();
-      //         answer = '';
-      //         evaluateExpression();
-      //       });
-      //     }
-      //     return;
-      //   }
-
-      //   // Process the percentage calculation immediately
-      //   try {
-      //     // Create a temporary expression to evaluate
-      //     String tempExpression = currentText;
-
-      //     // Remove commas for calculation
-      //     tempExpression = tempExpression.replaceAll(',', '');
-
-      //     // Prepare the expression for evaluation
-      //     tempExpression = tempExpression
-      //         .replaceAll('×', '*')
-      //         .replaceAll('÷', '/')
-      //         .replaceAll('π', '3.141592653589793')
-      //         .replaceAllMapped(
-      //             RegExp(r'(?<![\d.])e'), (m) => '2.718281828459045');
-
-      //     // Check if we have a binary operation
-      //     RegExp binaryOpPattern = RegExp(r'(.+)([\+\-\*\/])([0-9.]+)$');
-      //     Match? match = binaryOpPattern.firstMatch(tempExpression);
-
-      //     double result;
-
-      //     if (match != null) {
-      //       // We have a binary operation like "8+3"
-      //       String leftExpr = match.group(1) ?? '';
-      //       String operator = match.group(2) ?? '';
-      //       String rightExpr = match.group(3) ?? '';
-
-      //       double rightNum = double.parse(rightExpr);
-      //       double percentValue = rightNum / 100;
-
-      //       // For + and -, calculate percentage of left operand
-      //       if (operator == '+' || operator == '-') {
-      //         try {
-      //           Expression exp = Expression(leftExpr);
-      //           var evalResult = exp.eval();
-
-      //           if (evalResult != null) {
-      //             double leftValue = evalResult.toDouble();
-      //             double percentOfLeft = leftValue * percentValue;
-
-      //             if (operator == '+') {
-      //               result = leftValue + percentOfLeft;
-      //             } else {
-      //               result = leftValue - percentOfLeft;
-      //             }
-      //           } else {
-      //             // Fallback to simple percentage
-      //             result = percentValue;
-      //           }
-      //         } catch (e) {
-      //           // Fallback to simple percentage
-      //           result = percentValue;
-      //         }
-      //       } else {
-      //         // For * and /, evaluate the complete expression with the percentage value
-      //         try {
-      //           // Create the expression with the percentage value
-      //           String evalExpr = leftExpr + operator + percentValue.toString();
-      //           Expression exp = Expression(evalExpr);
-      //           var evalResult = exp.eval();
-
-      //           if (evalResult != null) {
-      //             result = evalResult.toDouble();
-      //           } else {
-      //             // Fallback to simple percentage
-      //             result = percentValue;
-      //           }
-      //         } catch (e) {
-      //           debugPrint("Error evaluating * or / with percentage: $e");
-      //           // Fallback to simple percentage
-      //           result = percentValue;
-      //         }
-      //       }
-      //     } else {
-      //       // Simple percentage: just divide by 100
-      //       double value = double.parse(tempExpression);
-      //       result = value / 100;
-      //     }
-
-      //     // Update the UI
-      //     setState(() {
-      //       // Keep the original expression and add %
-      //       _rawExpression = '$currentText%';
-      //       _inputController.text = formatExpression(_rawExpression);
-      //       _inputController.selection = TextSelection.collapsed(
-      //         offset: _inputController.text.length,
-      //       );
-
-      //       // Show the result immediately
-      //       answer = formatNumber(result);
-      //     });
-      //   } catch (e) {
-      //     debugPrint("Error calculating percentage: $e");
-      //     // If there's an error, just append % and don't calculate
-      //     setState(() {
-      //       _rawExpression = '$currentText%';
-      //       _inputController.text = formatExpression(_rawExpression);
-      //       _inputController.selection = TextSelection.collapsed(
-      //         offset: _inputController.text.length,
-      //       );
-      //     });
-      //   }
-      //   return;
 
       case '=':
         if (_rawExpression.isNotEmpty) {
@@ -1891,50 +1475,116 @@ class _CalcPageState extends State<CalcPage>
   }
 
   // --- UI Building ---
-  final Map<String, Color> buttonColors = {
-    'DEG': CupertinoColors.systemGreen.withOpacity(0.3),
-    'RAD': CupertinoColors.systemOrange.withOpacity(0.3),
-    'X': CupertinoColors.systemPurple.withOpacity(0.3),
-    'Y': CupertinoColors.systemTeal.withOpacity(0.3),
-    'shft': CupertinoColors.systemIndigo.withOpacity(0.4),
-    'sin': CupertinoColors.systemGrey5,
-    'cos': CupertinoColors.systemGrey5,
-    'tan': CupertinoColors.systemGrey5,
-    'log': CupertinoColors.systemGrey5,
-    '10ˣ': CupertinoColors.white,
-    '√': CupertinoColors.systemGrey5,
-    '(': CupertinoColors.systemGrey5,
-    ')': CupertinoColors.systemGrey5,
-    '%': CupertinoColors.systemGrey5,
-    '!': CupertinoColors.systemGrey5,
-    '^': CupertinoColors.systemGrey5,
-    'π': CupertinoColors.systemGrey5,
-    'e': CupertinoColors.systemGrey5,
-    'AC': CupertinoColors.systemRed.withOpacity(0.3),
-    'del': CupertinoColors.systemGrey5,
-    '=': CupertinoColors.systemBlue.withOpacity(0.5),
-    '+': CupertinoColors.systemGrey5,
-    '-': CupertinoColors.systemGrey5,
-    '×': CupertinoColors.systemGrey5,
-    '÷': CupertinoColors.systemGrey5,
-    '.': CupertinoColors.white,
-    '0': CupertinoColors.white,
-    '1': CupertinoColors.white,
-    '2': CupertinoColors.white,
-    '3': CupertinoColors.white,
-    '4': CupertinoColors.white,
-    '5': CupertinoColors.white,
-    '6': CupertinoColors.white,
-    '7': CupertinoColors.white,
-    '8': CupertinoColors.white,
-    '9': CupertinoColors.white,
-    'hist': CupertinoColors.systemGroupedBackground,
-    'unit': CupertinoColors.systemGroupedBackground,
-    'Settings': CupertinoColors.systemGroupedBackground,
-    'Calc': CupertinoColors.systemGroupedBackground,
-    'Copy': CupertinoColors.systemGroupedBackground,
-    'Paste': CupertinoColors.systemGroupedBackground,
-  };
+  // final Map<String, Color> buttonColors = {
+  //   'DEG': CupertinoColors.systemGreen.withOpacity(0.3),
+  //   'RAD': CupertinoColors.systemOrange.withOpacity(0.3),
+  //   'X': CupertinoColors.systemPurple.withOpacity(0.3),
+  //   'Y': CupertinoColors.systemTeal.withOpacity(0.3),
+  //   'shft': CupertinoColors.systemIndigo.withOpacity(0.4),
+  //   'sin': CupertinoColors.systemGrey5,
+  //   'cos': CupertinoColors.systemGrey5,
+  //   'tan': CupertinoColors.systemGrey5,
+  //   'log': CupertinoColors.systemGrey5,
+  //   '10ˣ': CupertinoColors.white,
+  //   '√': CupertinoColors.systemGrey5,
+  //   '(': CupertinoColors.systemGrey5,
+  //   ')': CupertinoColors.systemGrey5,
+  //   '%': CupertinoColors.systemGrey5,
+  //   '!': CupertinoColors.systemGrey5,
+  //   '^': CupertinoColors.systemGrey5,
+  //   'π': CupertinoColors.systemGrey5,
+  //   'e': CupertinoColors.systemGrey5,
+  //   'AC': CupertinoColors.systemRed.withOpacity(0.3),
+  //   'del': CupertinoColors.systemGrey5,
+  //   '=': CupertinoColors.systemBlue.withOpacity(0.5),
+  //   '+': CupertinoColors.systemGrey5,
+  //   '-': CupertinoColors.systemGrey5,
+  //   '×': CupertinoColors.systemGrey5,
+  //   '÷': CupertinoColors.systemGrey5,
+  //   '.': CupertinoColors.white,
+  //   '0': CupertinoColors.white,
+  //   '1': CupertinoColors.white,
+  //   '2': CupertinoColors.white,
+  //   '3': CupertinoColors.white,
+  //   '4': CupertinoColors.white,
+  //   '5': CupertinoColors.white,
+  //   '6': CupertinoColors.white,
+  //   '7': CupertinoColors.white,
+  //   '8': CupertinoColors.white,
+  //   '9': CupertinoColors.white,
+  //   'hist': CupertinoColors.systemGroupedBackground,
+  //   'unit': CupertinoColors.systemGroupedBackground,
+  //   'Settings': CupertinoColors.systemGroupedBackground,
+  //   'Calc': CupertinoColors.systemGroupedBackground,
+  //   'Copy': CupertinoColors.systemGroupedBackground,
+  //   'Paste': CupertinoColors.systemGroupedBackground,
+  // };
+
+  Color getButtonColor(BuildContext context, String text) {
+    final isDarkMode = CupertinoTheme.of(context).brightness == Brightness.dark;
+    switch (text) {
+      case 'DEG':
+      case 'RAD':
+        return isDeg
+            ? CupertinoColors.systemGreen.withOpacity(0.3)
+            : CupertinoColors.systemOrange.withOpacity(0.3);
+      case 'X':
+        return CupertinoColors.systemPurple.withOpacity(0.3);
+      case 'Y':
+        return CupertinoColors.systemTeal.withOpacity(0.3);
+      case 'shft':
+        return isShift
+            ? CupertinoColors.systemIndigo.withOpacity(0.4)
+            : CupertinoColors.systemIndigo.withOpacity(0.3);
+      case 'AC':
+        return CupertinoColors.systemRed.withOpacity(0.3);
+      case '=':
+        return CupertinoColors.activeBlue.withOpacity(0.5);
+      case 'del':
+        return isDarkMode
+            ? CupertinoColors.systemGrey2
+            : CupertinoColors.systemGrey5;
+      case 'hist':
+      case 'unit':
+      case 'Settings':
+      case 'Calc':
+      case 'Copy':
+      case 'Paste':
+        return CupertinoTheme.of(context)
+            .barBackgroundColor; // Use bar background for these
+      default:
+        return isDarkMode
+            ? CupertinoColors.systemGrey2
+            : CupertinoColors.white; // Default button color
+    }
+  }
+
+  Color getButtonForegroundColor(BuildContext context, String text) {
+    final isDarkMode = CupertinoTheme.of(context).brightness == Brightness.dark;
+    switch (text) {
+      case 'del':
+        return CupertinoColors.systemRed;
+      case '=':
+        return CupertinoColors.white;
+      case 'hist':
+      case 'unit':
+      case 'Settings':
+      case 'Calc':
+        return isDarkMode
+            ? CupertinoColors.systemGrey3
+            : CupertinoColors.systemGrey3; // Consistent grey for icons
+      case 'Copy':
+      case 'Paste':
+        return isDarkMode
+            ? CupertinoColors.systemGrey
+            : CupertinoColors.systemGrey; // Consistent grey for icons
+      default:
+        return CupertinoTheme.of(context)
+            .textTheme
+            .textStyle
+            .color!; // Use theme text color
+    }
+  }
 
   double getButtonTextSize(String text, double btnSize) {
     if (text == '00') return btnSize * 0.36;
@@ -1959,17 +1609,19 @@ class _CalcPageState extends State<CalcPage>
     final mediaQueryData = MediaQuery.of(context);
     final screenHeight = mediaQueryData.size.height;
 
-    Color buttonColor = buttonColors[text] ?? CupertinoColors.white;
-    if (text == 'shft') {
-      buttonColor = isShift
-          ? CupertinoColors.systemIndigo.withOpacity(0.4)
-          : CupertinoColors.systemIndigo.withOpacity(0.3);
-    }
+    // Color buttonColor = buttonColors[text] ?? CupertinoColors.white;
+    Color buttonColor = getButtonColor(context, text);
+    Color fgColor = getButtonForegroundColor(context, text);
+    // if (text == 'shft') {
+    //   buttonColor = isShift
+    //       ? CupertinoColors.systemIndigo.withOpacity(0.4)
+    //       : CupertinoColors.systemIndigo.withOpacity(0.3);
+    // }
 
-    Color fgColor = (text == 'del')
-        ? CupertinoColors.systemRed
-        : CupertinoColors.label; // AC handled by background
-    if (text == '=') fgColor = CupertinoColors.white;
+    // Color fgColor = (text == 'del')
+    //     ? CupertinoColors.systemRed
+    //     : CupertinoColors.label; // AC handled by background
+    // if (text == '=') fgColor = CupertinoColors.white;
 
     Widget content;
     if (text == 'shft') {
@@ -2039,9 +1691,9 @@ class _CalcPageState extends State<CalcPage>
             break;
         }
       }
-      if (text == 'DEG') {
-        buttonColor = isDeg ? buttonColors['DEG']! : buttonColors['RAD']!;
-      }
+      // if (text == 'DEG') {
+      //   buttonColor = isDeg ? buttonColors['DEG']! : buttonColors['RAD']!;
+      // }
 
       content = Text(
         displayText,
@@ -2063,31 +1715,48 @@ class _CalcPageState extends State<CalcPage>
             'Settings'); // Apply shadow ONLY if it's NOT one of these buttons
     final bool isEnabled = text != 'Calc';
     return Container(
-      width: btnSize,
-      height: screenHeight * 0.055,
-      margin: EdgeInsets.all(btnSize * 0.04),
-      decoration: BoxDecoration(
-        color: buttonColor,
-        borderRadius: BorderRadius.circular(btnSize * 0.33), // Button radius
-        boxShadow: applyShadow // Use the boolean flag here
-            ? [
-                // Apply shadow if flag is true
-                BoxShadow(
-                  color: CupertinoColors.systemGrey.withOpacity(0.1),
-                  spreadRadius: 0.5,
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
-                ),
-              ]
-            : null, // No shadow if flag is false
-      ),
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        borderRadius: BorderRadius.circular(btnSize * 0.33), // Match radius
-        onPressed: isEnabled ? () => buttonPressed(text) : null,
-        child: Center(child: content),
-      ),
-    );
+        width: btnSize,
+        height: screenHeight * 0.055,
+        margin: EdgeInsets.all(btnSize * 0.04),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: buttonColor,
+            foregroundColor: fgColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(btnSize * 0.33),
+            ),
+
+            elevation: applyShadow ? 2 : 0, // Use the boolean flag here
+            shadowColor: applyShadow
+                ? CupertinoColors.systemGrey.withOpacity(0.1)
+                : Colors.transparent, // Shadow color
+            padding: EdgeInsets.zero,
+          ),
+          onPressed: isEnabled ? () => buttonPressed(text) : null,
+          child: Center(child: content),
+        )
+        // decoration: BoxDecoration(
+        //   color: buttonColor,
+        //   borderRadius: BorderRadius.circular(btnSize * 0.33), // Button radius
+        //   boxShadow: applyShadow // Use the boolean flag here
+        //       ? [
+        //           // Apply shadow if flag is true
+        //           BoxShadow(
+        //             color: CupertinoColors.systemGrey.withOpacity(0.1),
+        //             spreadRadius: 0.5,
+        //             blurRadius: 2,
+        //             offset: const Offset(0, 1),
+        //           ),
+        //         ]
+        //       : null, // No shadow if flag is false
+        // ),
+        // child: CupertinoButton(
+        //   padding: EdgeInsets.zero,
+        //   borderRadius: BorderRadius.circular(btnSize * 0.33), // Match radius
+        //   onPressed: isEnabled ? () => buttonPressed(text) : null,
+        //   child: Center(child: content),
+        // ),
+        );
   }
 
   @override
@@ -2112,9 +1781,11 @@ class _CalcPageState extends State<CalcPage>
     if (_inputTextSizeAnimation is AlwaysStoppedAnimation) {
       _initializeAnimations();
     }
+    final currentTheme = CupertinoTheme.of(context);
+    // final isDarkMode = currentTheme.brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemGroupedBackground,
+      backgroundColor: currentTheme.scaffoldBackgroundColor,
       child: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(
@@ -2194,7 +1865,9 @@ class _CalcPageState extends State<CalcPage>
                                         12.0,
                                         18.0,
                                       ),
-                                      color: CupertinoColors.secondaryLabel,
+                                      color: currentTheme
+                                          .textTheme.textStyle.color!
+                                          .withOpacity(0.7),
                                       fontFamily: 'Inter',
                                     ),
                                     maxLines: 1,
@@ -2227,11 +1900,11 @@ class _CalcPageState extends State<CalcPage>
                                 controller: _inputController,
                                 readOnly: true,
                                 showCursor: true,
-                                cursorColor: CupertinoColors.activeBlue,
+                                cursorColor: currentTheme.primaryColor,
                                 textAlign: TextAlign.right,
                                 style: TextStyle(
                                   fontSize: _inputTextSizeAnimation.value,
-                                  color: CupertinoColors.label,
+                                  color: currentTheme.textTheme.textStyle.color,
                                   fontWeight: FontWeight.w300,
                                   fontFamily: 'Inter',
                                 ),
@@ -2290,7 +1963,8 @@ class _CalcPageState extends State<CalcPage>
                                       fontSize: _answerTextSizeAnimation.value,
                                       color: isError
                                           ? CupertinoColors.systemRed
-                                          : CupertinoColors.label,
+                                          : currentTheme
+                                              .textTheme.textStyle.color,
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'Inter',
                                     ),
@@ -2349,9 +2023,9 @@ class _CalcPageState extends State<CalcPage>
                   ),
                 ),
               ),
-              Container(
+              SizedBox(
                 height: screenHeight * 0.048,
-                color: CupertinoColors.systemGroupedBackground,
+                // color: CupertinoColors.systemGroupedBackground,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -2373,6 +2047,7 @@ class _CalcPageState extends State<CalcPage>
     showCupertinoModalPopup(
       context: parentContext,
       builder: (modalContext) {
+        final currentTheme = CupertinoTheme.of(modalContext);
         return GestureDetector(
           onVerticalDragEnd: (details) {
             if (details.primaryVelocity != null &&
@@ -2382,8 +2057,8 @@ class _CalcPageState extends State<CalcPage>
           },
           child: Container(
             height: MediaQuery.of(modalContext).size.height * 0.65,
-            decoration: const BoxDecoration(
-              color: CupertinoColors.systemBackground,
+            decoration: BoxDecoration(
+              color: currentTheme.scaffoldBackgroundColor,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
@@ -2396,7 +2071,7 @@ class _CalcPageState extends State<CalcPage>
                   width: 35,
                   margin: const EdgeInsets.symmetric(vertical: 10.0),
                   decoration: BoxDecoration(
-                    color: CupertinoColors.systemGrey4,
+                    color: currentTheme.primaryColor.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(2.5),
                   ),
                 ),
@@ -2462,6 +2137,8 @@ class _CalcPageState extends State<CalcPage>
   }
 
   void showSettings(BuildContext parentContext) {
+    if (!mounted) return; // Add this check
+
     showCupertinoModalPopup(
       context: parentContext,
       builder: (modalContext) {
@@ -2472,63 +2149,8 @@ class _CalcPageState extends State<CalcPage>
               Navigator.pop(modalContext);
             }
           },
-          child: Container(
-            height: MediaQuery.of(modalContext).size.height * 0.35,
-            decoration: const BoxDecoration(
-              color: CupertinoColors.systemBackground,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-            ),
-            child: Column(
-              children: [
-                // Modal Handle
-                Container(
-                  height: 5,
-                  width: 35,
-                  margin: const EdgeInsets.symmetric(vertical: 10.0),
-                  decoration: BoxDecoration(
-                    color: CupertinoColors.systemGrey4,
-                    borderRadius: BorderRadius.circular(2.5),
-                  ),
-                ),
-                // Settings List
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    children: [
-                      // Enable Dark Theme Toggle
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Enable Dark Theme",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          CupertinoSwitch(
-                            value:
-                                isDarkThemeEnabled, // Assuming you have this state variable
-                            onChanged: (bool value) {
-                              if (mounted) {
-                                setState(() {
-                                  isDarkThemeEnabled = value;
-                                });
-                              }
-                              Navigator.pop(
-                                  modalContext); // Close modal on change
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          child: SettingsModalContent(
+            onClose: () => Navigator.pop(modalContext),
           ),
         );
       },
@@ -2539,6 +2161,8 @@ class _CalcPageState extends State<CalcPage>
     showCupertinoModalPopup(
       context: parentContext,
       builder: (modalContext) {
+        final currentTheme =
+            CupertinoTheme.of(modalContext); // Get theme in modal context
         return GestureDetector(
           onVerticalDragEnd: (details) {
             if (details.primaryVelocity != null &&
@@ -2548,9 +2172,10 @@ class _CalcPageState extends State<CalcPage>
           },
           child: Container(
             height: MediaQuery.of(modalContext).size.height * 0.65,
-            decoration: const BoxDecoration(
-              color: CupertinoColors.systemBackground,
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: currentTheme
+                  .scaffoldBackgroundColor, // Use theme background color
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
               ),
@@ -2563,7 +2188,8 @@ class _CalcPageState extends State<CalcPage>
                   width: 35,
                   margin: const EdgeInsets.symmetric(vertical: 10.0),
                   decoration: BoxDecoration(
-                    color: CupertinoColors.systemGrey4,
+                    color: currentTheme.primaryColor
+                        .withOpacity(0.3), // Use a theme color
                     borderRadius: BorderRadius.circular(2.5),
                   ),
                 ),
@@ -2574,19 +2200,17 @@ class _CalcPageState extends State<CalcPage>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Unit Converter',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Inter',
-                        ),
+                        style: currentTheme.textTheme
+                            .navTitleTextStyle, // Use theme text style
                       ),
                       CupertinoButton(
                         padding: EdgeInsets.zero,
-                        child: const Icon(
+                        child: Icon(
                           CupertinoIcons.xmark_circle_fill,
-                          color: CupertinoColors.systemGrey,
+                          color: currentTheme.primaryColor
+                              .withOpacity(0.6), // Use a theme color
                         ),
                         onPressed: () => Navigator.pop(modalContext),
                       ),
@@ -2595,7 +2219,8 @@ class _CalcPageState extends State<CalcPage>
                 ),
                 // Grid Content
                 Expanded(
-                  child: ToolsGridContent(),
+                  child:
+                      ToolsGridContent(), // ToolsGridContent still uses Cupertino colors
                 ),
               ],
             ),
@@ -2606,7 +2231,7 @@ class _CalcPageState extends State<CalcPage>
   }
 
   void showOverlayMessage(String message) {
-    final overlay = Navigator.of(context).overlay!;
+    final overlay = Navigator.of(context).overlay;
     final overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
         bottom: 100,
@@ -2633,7 +2258,7 @@ class _CalcPageState extends State<CalcPage>
       ),
     );
 
-    overlay.insert(overlayEntry);
+    overlay?.insert(overlayEntry);
     Future.delayed(const Duration(seconds: 2), () {
       overlayEntry.remove();
     });

@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:pro_calc/Pages/calc_page.dart';
+import 'package:pro_calc/Pages/utils_theme_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 Future<void> initializeApp() async {
   try {
@@ -21,74 +23,65 @@ void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
     await initializeApp();
-    runApp(const ProCalc());
+
+    // Create a container to initialize providers
+    final container = ProviderContainer();
+
+    // Load the follow system theme preference
+    final themeModeNotifier = container.read(themeModeProvider.notifier);
+    final followSystemTheme = await themeModeNotifier.getFollowSystemTheme();
+
+    // Dispose the temporary container
+    container.dispose();
+
+    // Run the app with initialized providers
+    runApp(ProviderScope(
+      overrides: [
+        // Initialize the followSystemThemeProvider with the saved preference
+        followSystemThemeProvider.overrideWith((ref) => followSystemTheme),
+      ],
+      child: const ProCalc(),
+    ));
   } catch (e) {
     debugPrint('Fatal error during app startup: $e');
     rethrow;
   }
 }
 
-class ProCalc extends StatefulWidget {
+class ProCalc extends ConsumerWidget {
   const ProCalc({super.key});
 
   @override
-  State<ProCalc> createState() => _ProCalcState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch both theme mode and system theme preference
+    final themeMode = ref.watch(themeModeProvider);
+    final followSystemTheme = ref.watch(followSystemThemeProvider);
 
-class _ProCalcState extends State<ProCalc> {
-  // final List<Widget> _tabs = [
-  //   const CalcPage(),
-  //   const ToolsPage(),
-  //   const SettingsPage(),
-  // ];
-  @override
-  Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        systemNavigationBarDividerColor: Color.fromARGB(255, 255, 255, 255),
-        statusBarColor: Color.fromARGB(255, 255, 255, 255),
-        statusBarIconBrightness: Brightness.dark,
-      ),
-    );
-    return const SafeArea(
+    // Determine the actual theme to use
+    ThemeMode effectiveThemeMode = themeMode;
+
+    // If following system theme, determine the system brightness
+    if (followSystemTheme) {
+      final brightness = MediaQuery.platformBrightnessOf(context);
+      effectiveThemeMode =
+          brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light;
+    }
+
+    final theme =
+        effectiveThemeMode == ThemeMode.light ? lightTheme : darkTheme;
+
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarColor: theme.barBackgroundColor,
+      systemNavigationBarColor: theme.barBackgroundColor,
+      systemNavigationBarIconBrightness:
+          themeMode == ThemeMode.light ? Brightness.dark : Brightness.light,
+    ));
+    return SafeArea(
       child: CupertinoApp(
-        theme: CupertinoThemeData(
-          primaryColor: CupertinoColors.activeBlue,
-          textTheme: CupertinoTextThemeData(
-            textStyle: TextStyle(
-              fontFamily: 'Inter',
-              color: Color.fromARGB(255, 0, 0, 0),
-            ),
-            actionTextStyle: TextStyle(
-              fontFamily: 'Inter',
-            ),
-            tabLabelTextStyle: TextStyle(
-              fontFamily: 'Inter',
-            ),
-            navTitleTextStyle: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
-            navLargeTitleTextStyle: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-            ),
-            pickerTextStyle: TextStyle(
-              fontFamily: 'Inter',
-            ),
-            dateTimePickerTextStyle: TextStyle(
-              fontFamily: 'Inter',
-            ),
-          ),
-        ),
+        theme: theme,
         debugShowCheckedModeBanner: false,
         title: 'Pro Calc',
         home: CalcPage(),
-        //CupertinoPageScaffold(
-        //child: BottomBar(tabs: _tabs),
-        //),
       ),
     );
   }
