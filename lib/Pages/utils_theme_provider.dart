@@ -20,80 +20,134 @@ class ThemePreferences {
 }
 
 // Provider for managing the theme preferences
-final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>(
-    (ref) => ThemeModeNotifier());
-
+// final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>(
+// (ref) => ThemeModeNotifier());
+//
 // Provider for accessing follow system theme setting
 final followSystemThemeProvider = StateProvider<bool>((ref) => true);
 
 // StateNotifier to handle theme mode changes and persistence
-class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  ThemeModeNotifier() : super(ThemeMode.light) {
+// class ThemeModeNotifier extends StateNotifier<ThemeMode> {
+//   ThemeModeNotifier() : super(ThemeMode.light) {
+//     _loadThemePreferences();
+//   }
+
+//   static const _themeModeKey = 'themeMode';
+//   static const _followSystemThemeKey = 'followSystemTheme';
+
+//   // Load the saved theme preferences from SharedPreferences
+//   Future<void> _loadThemePreferences() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final savedTheme = prefs.getString(_themeModeKey);
+
+//     if (savedTheme == 'dark') {
+//       state = ThemeMode.dark;
+//     } else {
+//       state = ThemeMode.light;
+//     }
+//   }
+
+//   // Get the saved follow system theme preference
+//   Future<bool> getFollowSystemTheme() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     return prefs.getBool(_followSystemThemeKey) ?? true;
+//   }
+
+//   // Set the theme mode
+//   void setThemeMode(ThemeMode mode) {
+//     state = mode;
+//     _saveThemeMode(mode);
+//   }
+
+//   // Toggle between light and dark theme modes
+//   void toggleTheme() {
+//     state = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+//     _saveThemeMode(state);
+//   }
+
+//   // Set whether to follow system theme
+//   void setFollowSystemTheme(bool follow, WidgetRef ref) {
+//     ref.read(followSystemThemeProvider.notifier).state = follow;
+//     _saveFollowSystemTheme(follow);
+//   }
+
+//   // Save the current theme mode to SharedPreferences
+//   Future<void> _saveThemeMode(ThemeMode mode) async {
+//     final prefs = await SharedPreferences.getInstance();
+//     prefs.setString(_themeModeKey, mode == ThemeMode.light ? 'light' : 'dark');
+//   }
+
+//   // Save the follow system theme setting to SharedPreferences
+//   Future<void> _saveFollowSystemTheme(bool follow) async {
+//     final prefs = await SharedPreferences.getInstance();
+//     prefs.setBool(_followSystemThemeKey, follow);
+//   }
+// }
+
+// In utils_theme_provider.dart
+class ThemeState {
+  final ThemeMode themeMode;
+  final bool followSystemTheme;
+
+  ThemeState({
+    required this.themeMode,
+    required this.followSystemTheme,
+  });
+}
+
+class ThemeNotifier extends StateNotifier<ThemeState> {
+  ThemeNotifier()
+      : super(ThemeState(themeMode: ThemeMode.light, followSystemTheme: true)) {
     _loadThemePreferences();
   }
 
   static const _themeModeKey = 'themeMode';
   static const _followSystemThemeKey = 'followSystemTheme';
 
-  // Load the saved theme preferences from SharedPreferences
   Future<void> _loadThemePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final savedTheme = prefs.getString(_themeModeKey);
+    final savedFollowSystemTheme = prefs.getBool(_followSystemThemeKey) ?? true;
 
-    if (savedTheme == 'dark') {
-      state = ThemeMode.dark;
-    } else {
-      state = ThemeMode.light;
-    }
+    state = ThemeState(
+      themeMode: savedTheme == 'dark' ? ThemeMode.dark : ThemeMode.light,
+      followSystemTheme: savedFollowSystemTheme,
+    );
   }
 
-  // Get the saved follow system theme preference
-  Future<bool> getFollowSystemTheme() async {
+  void setThemeMode(ThemeMode mode, {bool followSystem = false}) {
+    state = ThemeState(themeMode: mode, followSystemTheme: followSystem);
+    _saveThemePreferences();
+  }
+
+  void setFollowSystemTheme(bool follow) {
+    state = ThemeState(themeMode: state.themeMode, followSystemTheme: follow);
+    _saveThemePreferences();
+  }
+
+  Future<void> _saveThemePreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_followSystemThemeKey) ?? true;
-  }
-
-  // Set the theme mode
-  void setThemeMode(ThemeMode mode) {
-    state = mode;
-    _saveThemeMode(mode);
-  }
-
-  // Toggle between light and dark theme modes
-  void toggleTheme() {
-    state = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    _saveThemeMode(state);
-  }
-
-  // Set whether to follow system theme
-  void setFollowSystemTheme(bool follow, WidgetRef ref) {
-    ref.read(followSystemThemeProvider.notifier).state = follow;
-    _saveFollowSystemTheme(follow);
-  }
-
-  // Save the current theme mode to SharedPreferences
-  Future<void> _saveThemeMode(ThemeMode mode) async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setString(_themeModeKey, mode == ThemeMode.light ? 'light' : 'dark');
-  }
-
-  // Save the follow system theme setting to SharedPreferences
-  Future<void> _saveFollowSystemTheme(bool follow) async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setBool(_followSystemThemeKey, follow);
+    prefs.setString(
+        _themeModeKey, state.themeMode == ThemeMode.light ? 'light' : 'dark');
+    prefs.setBool(_followSystemThemeKey, state.followSystemTheme);
   }
 }
 
+final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeState>(
+  (ref) => ThemeNotifier(),
+);
+
 // Define custom CupertinoThemeData for light theme
 final lightTheme = CupertinoThemeData(
+  brightness: Brightness.light,
   primaryColor: CupertinoColors.activeBlue,
   // Use existing CupertinoColors for light theme
   barBackgroundColor: CupertinoColors.systemGroupedBackground,
-  scaffoldBackgroundColor: CupertinoColors.systemGroupedBackground,
+  scaffoldBackgroundColor: CupertinoColors.systemGrey2,
   textTheme: const CupertinoTextThemeData(
     textStyle: TextStyle(
       fontFamily: 'Inter',
-      color: CupertinoColors.label, // Dark text for light theme
+      color: CupertinoColors.black, // Dark text for light theme
     ),
     actionTextStyle: TextStyle(
       fontFamily: 'Inter',
@@ -124,6 +178,7 @@ final lightTheme = CupertinoThemeData(
 
 // Define custom CupertinoThemeData for dark theme
 final darkTheme = CupertinoThemeData(
+  brightness: Brightness.dark,
   primaryColor: CupertinoColors.systemIndigo, // Example dark primary color
   // Define dark theme colors
   barBackgroundColor: CupertinoColors.systemGrey6,

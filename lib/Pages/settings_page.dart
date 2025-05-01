@@ -12,10 +12,13 @@ class SettingsModalContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeModeNotifier = ref.read(themeModeProvider.notifier);
-    final currentThemeMode = ref.watch(themeModeProvider);
-    final followSystemTheme = ref.watch(followSystemThemeProvider);
+    final themeState = ref.watch(themeProvider);
+    final themeNotifier = ref.read(themeProvider.notifier);
     final currentTheme = CupertinoTheme.of(context);
+    // final themeModeNotifier = ref.read(themeModeProvider.notifier);
+    // final currentThemeMode = ref.watch(themeModeProvider);
+    // final followSystemTheme = ref.watch(followSystemThemeProvider);
+    // final currentTheme = CupertinoTheme.of(context);
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.40,
@@ -64,14 +67,12 @@ class SettingsModalContent extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               children: [
-                // Theme Selection Row
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0, top: 8.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        // crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Padding(
                             padding: const EdgeInsets.all(12.0),
@@ -90,42 +91,37 @@ class SettingsModalContent extends ConsumerWidget {
                               context: context,
                               label: "Light",
                               icon: CupertinoIcons.sun_max_fill,
-                              isSelected: !followSystemTheme &&
-                                  currentThemeMode == ThemeMode.light,
+                              isSelected: !themeState.followSystemTheme &&
+                                  themeState.themeMode == ThemeMode.light,
                               onPressed: () {
-                                themeModeNotifier.setFollowSystemTheme(
-                                    false, ref);
-                                themeModeNotifier.setThemeMode(ThemeMode.light);
+                                themeNotifier.setThemeMode(ThemeMode.light,
+                                    followSystem: false);
                               },
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // const Spacer(),
                           Expanded(
                             child: _buildThemeButton(
                               context: context,
                               label: "Dark",
                               icon: CupertinoIcons.moon_fill,
-                              isSelected: !followSystemTheme &&
-                                  currentThemeMode == ThemeMode.dark,
+                              isSelected: !themeState.followSystemTheme &&
+                                  themeState.themeMode == ThemeMode.dark,
                               onPressed: () {
-                                themeModeNotifier.setFollowSystemTheme(
-                                    false, ref);
-                                themeModeNotifier.setThemeMode(ThemeMode.dark);
+                                themeNotifier.setThemeMode(ThemeMode.dark,
+                                    followSystem: false);
                               },
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // const Spacer(),
                           Expanded(
                             child: _buildThemeButton(
                               context: context,
                               label: "System",
                               icon: CupertinoIcons.device_phone_portrait,
-                              isSelected: followSystemTheme,
+                              isSelected: themeState.followSystemTheme,
                               onPressed: () {
-                                themeModeNotifier.setFollowSystemTheme(
-                                    true, ref);
+                                themeNotifier.setFollowSystemTheme(true);
                               },
                             ),
                           ),
@@ -134,34 +130,7 @@ class SettingsModalContent extends ConsumerWidget {
                     ],
                   ),
                 ),
-
-                // You can add more settings here as needed
-                const SizedBox(height: 20),
-
-                // About section
-                Padding(
-                  padding: const EdgeInsets.only(top: 10.0, bottom: 8.0),
-                  child: Text(
-                    "About",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: currentTheme.primaryColor,
-                    ),
-                  ),
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Text(
-                    "Pro-Calc v1.0.0",
-                    style: TextStyle(
-                      color: currentTheme.textTheme.textStyle.color!
-                          .withOpacity(0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
+                // ... rest of the code ...
               ],
             ),
           ),
