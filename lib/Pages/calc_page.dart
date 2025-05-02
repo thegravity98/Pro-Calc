@@ -12,7 +12,6 @@ import 'package:flutter/material.dart' hide ThemeMode;
 import 'tools_page.dart';
 import 'history_page.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pro_calc/Pages/utils_theme_provider.dart';
 import 'settings_page.dart';
 
 class CalcPage extends ConsumerStatefulWidget {
@@ -1715,48 +1714,48 @@ class _CalcPageState extends ConsumerState<CalcPage>
             'Settings'); // Apply shadow ONLY if it's NOT one of these buttons
     final bool isEnabled = text != 'Calc';
     return Container(
-        width: btnSize,
-        height: screenHeight * 0.055,
-        margin: EdgeInsets.all(btnSize * 0.04),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: buttonColor,
-            foregroundColor: fgColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(btnSize * 0.33),
-            ),
+      width: btnSize,
+      height: screenHeight * 0.055,
+      margin: EdgeInsets.all(btnSize * 0.04),
+      // child: ElevatedButton(
+      //   style: ElevatedButton.styleFrom(
+      //     backgroundColor: buttonColor,
+      //     foregroundColor: fgColor,
+      //     shape: RoundedRectangleBorder(
+      //       borderRadius: BorderRadius.circular(btnSize * 0.33),
+      //     ),
 
-            elevation: applyShadow ? 2 : 0, // Use the boolean flag here
-            shadowColor: applyShadow
-                ? CupertinoColors.systemGrey.withOpacity(0.1)
-                : Colors.transparent, // Shadow color
-            padding: EdgeInsets.zero,
-          ),
-          onPressed: isEnabled ? () => buttonPressed(text) : null,
-          child: Center(child: content),
-        )
-        // decoration: BoxDecoration(
-        //   color: buttonColor,
-        //   borderRadius: BorderRadius.circular(btnSize * 0.33), // Button radius
-        //   boxShadow: applyShadow // Use the boolean flag here
-        //       ? [
-        //           // Apply shadow if flag is true
-        //           BoxShadow(
-        //             color: CupertinoColors.systemGrey.withOpacity(0.1),
-        //             spreadRadius: 0.5,
-        //             blurRadius: 2,
-        //             offset: const Offset(0, 1),
-        //           ),
-        //         ]
-        //       : null, // No shadow if flag is false
-        // ),
-        // child: CupertinoButton(
-        //   padding: EdgeInsets.zero,
-        //   borderRadius: BorderRadius.circular(btnSize * 0.33), // Match radius
-        //   onPressed: isEnabled ? () => buttonPressed(text) : null,
-        //   child: Center(child: content),
-        // ),
-        );
+      //     elevation: applyShadow ? 2 : 0, // Use the boolean flag here
+      //     shadowColor: applyShadow
+      //         ? CupertinoColors.systemGrey.withOpacity(0.1)
+      //         : Colors.transparent, // Shadow color
+      //     padding: EdgeInsets.zero,
+      //   ),
+      //   onPressed: isEnabled ? () => buttonPressed(text) : null,
+      //   child: Center(child: content),
+      // )
+      decoration: BoxDecoration(
+        color: buttonColor,
+        borderRadius: BorderRadius.circular(btnSize * 0.33), // Button radius
+        boxShadow: applyShadow // Use the boolean flag here
+            ? [
+                // Apply shadow if flag is true
+                BoxShadow(
+                  color: CupertinoColors.systemGrey.withOpacity(0.1),
+                  spreadRadius: 0.5,
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+              ]
+            : null, // No shadow if flag is false
+      ),
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        borderRadius: BorderRadius.circular(btnSize * 0.33), // Match radius
+        onPressed: isEnabled ? () => buttonPressed(text) : null,
+        child: Center(child: content),
+      ),
+    );
   }
 
   @override

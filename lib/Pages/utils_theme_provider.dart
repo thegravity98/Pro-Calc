@@ -104,15 +104,40 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
   static const _themeModeKey = 'themeMode';
   static const _followSystemThemeKey = 'followSystemTheme';
 
-  Future<void> _loadThemePreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedTheme = prefs.getString(_themeModeKey);
-    final savedFollowSystemTheme = prefs.getBool(_followSystemThemeKey) ?? true;
+  // Future<void> _loadThemePreferences() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final savedTheme = prefs.getString(_themeModeKey);
+  //   final savedFollowSystemTheme = prefs.getBool(_followSystemThemeKey) ?? true;
 
-    state = ThemeState(
-      themeMode: savedTheme == 'dark' ? ThemeMode.dark : ThemeMode.light,
-      followSystemTheme: savedFollowSystemTheme,
-    );
+  //   state = ThemeState(
+  //     themeMode: savedTheme == 'dark' ? ThemeMode.dark : ThemeMode.light,
+  //     followSystemTheme: savedFollowSystemTheme,
+  //   );
+  // }
+
+  Future<void> _loadThemePreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      debugPrint('SharedPreferences loaded: $prefs');
+      final savedTheme = prefs.getString(_themeModeKey);
+      debugPrint('savedTheme: $savedTheme');
+      final savedFollowSystemTheme =
+          prefs.getBool(_followSystemThemeKey) ?? true;
+      debugPrint('savedFollowSystemTheme: $savedFollowSystemTheme');
+      final themeMode = savedTheme == 'dark'
+          ? ThemeMode.dark
+          : (savedTheme == null ? ThemeMode.light : ThemeMode.light);
+      state = ThemeState(
+        themeMode: themeMode,
+        followSystemTheme: savedFollowSystemTheme,
+      );
+    } catch (e) {
+      debugPrint('Error loading theme preferences: $e');
+      state = ThemeState(
+        themeMode: ThemeMode.light,
+        followSystemTheme: true,
+      );
+    }
   }
 
   void setThemeMode(ThemeMode mode, {bool followSystem = false}) {

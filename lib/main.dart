@@ -187,6 +187,7 @@ class ProCalc extends ConsumerWidget {
     ));
 
     return CupertinoApp(
+      // showPerformanceOverlay: true,
       theme: theme,
       debugShowCheckedModeBanner: false,
       title: 'Pro Calc',

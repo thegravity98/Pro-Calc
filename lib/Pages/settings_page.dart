@@ -13,8 +13,13 @@ class SettingsModalContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeState = ref.watch(themeProvider);
-    final themeNotifier = ref.read(themeProvider.notifier);
+    debugPrint('themeState: $themeState');
     final currentTheme = CupertinoTheme.of(context);
+    debugPrint(
+        'currentTheme.textTheme.textStyle.color: ${currentTheme.textTheme.textStyle.color}');
+    // final themeState = ref.watch(themeProvider);
+    final themeNotifier = ref.read(themeProvider.notifier);
+    // final currentTheme = CupertinoTheme.of(context);
     // final themeModeNotifier = ref.read(themeModeProvider.notifier);
     // final currentThemeMode = ref.watch(themeModeProvider);
     // final followSystemTheme = ref.watch(followSystemThemeProvider);
