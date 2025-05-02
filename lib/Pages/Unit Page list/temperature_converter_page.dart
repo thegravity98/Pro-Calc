@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'base_converter_page.dart';
+import '../base_converter_page.dart';
 
 class TemperatureConverterPage extends StatelessWidget {
   const TemperatureConverterPage({super.key});

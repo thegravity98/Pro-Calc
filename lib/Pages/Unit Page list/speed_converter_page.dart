@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'base_converter_page.dart';
+import '../base_converter_page.dart';
 
 class SpeedConverterPage extends StatelessWidget {
   const SpeedConverterPage({super.key});
@@ -25,8 +25,10 @@ class SpeedConverterPage extends StatelessWidget {
   String _handleConversion(String input, String fromUnit, String toUnit) {
     try {
       double value = double.parse(input);
-      double valueInMetersPerSecond = value * _conversionRatesFromMetersPerSecond[fromUnit]!;
-      double result = valueInMetersPerSecond / _conversionRatesFromMetersPerSecond[toUnit]!;
+      double valueInMetersPerSecond =
+          value * _conversionRatesFromMetersPerSecond[fromUnit]!;
+      double result =
+          valueInMetersPerSecond / _conversionRatesFromMetersPerSecond[toUnit]!;
       return result.toStringAsFixed(6);
     } catch (e) {
       return 'Error';

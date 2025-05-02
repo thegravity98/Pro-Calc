@@ -44,8 +44,8 @@ class _BaseConverterPageState extends State<BaseConverterPage> {
     '2',
     '3',
     '00',
-    '.',
     '0',
+    '.'
   ];
 
   // Define unit size ranking (smallest to largest)
@@ -360,7 +360,7 @@ class _BaseConverterPageState extends State<BaseConverterPage> {
       child: Container(
         decoration: BoxDecoration(
           color: currentTheme.barBackgroundColor,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: CupertinoColors.systemGrey4),
         ),
         child: Center(
@@ -387,7 +387,7 @@ class _BaseConverterPageState extends State<BaseConverterPage> {
       child: Container(
         decoration: BoxDecoration(
           color: color ?? currentTheme.barBackgroundColor,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: CupertinoColors.systemGrey4),
         ),
         child: Center(
@@ -439,7 +439,7 @@ class _BaseConverterPageState extends State<BaseConverterPage> {
         height: size,
         decoration: BoxDecoration(
           color: currentTheme.barBackgroundColor,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(30),
           border: Border.all(color: CupertinoColors.systemGrey4),
         ),
         child: Center(
@@ -467,18 +467,18 @@ class _BaseConverterPageState extends State<BaseConverterPage> {
             },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: currentTheme.barBackgroundColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: CupertinoColors.systemGrey4),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.systemGrey.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          // boxShadow: [
+          //   BoxShadow(
+          //     color: CupertinoColors.systemGrey.withOpacity(0.1),
+          //     blurRadius: 4,
+          //     offset: const Offset(0, 2),
+          //   ),
+          // ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,7 +506,7 @@ class _BaseConverterPageState extends State<BaseConverterPage> {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            // const SizedBox(height: 8),
             if (isInputCard)
               CupertinoTextField(
                 controller: _inputController,
@@ -572,17 +572,29 @@ class _BaseConverterPageState extends State<BaseConverterPage> {
       });
 
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: Text(widget.title),
-      ),
+      // navigationBar: CupertinoNavigationBar(
+      //   middle: Text(widget.title),
+      // ),
       backgroundColor: currentTheme.scaffoldBackgroundColor,
       child: SafeArea(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
+            SizedBox(height: 10),
+            SizedBox(
+              child: Text(widget.title,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w500,
+                    color: currentTheme.textTheme.textStyle.color,
+                  )),
+            ),
             Expanded(
+              flex: 5,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     _buildUnitCard(
                         context, _fromUnit, _inputController.text, true),
@@ -605,7 +617,8 @@ class _BaseConverterPageState extends State<BaseConverterPage> {
               ),
             ),
             SizedBox(
-              height: screenHeight * 0.048,
+              // color: CupertinoColors.black,
+              height: screenHeight * 0.045,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -617,64 +630,70 @@ class _BaseConverterPageState extends State<BaseConverterPage> {
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(16),
-              height: MediaQuery.of(context).size.height * 0.4,
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return GridView.count(
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 3,
-                          childAspectRatio: (constraints.maxWidth / 3) /
-                              (constraints.maxHeight / 4),
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          children:
-                              digitButtons.map(_buildDigitButton).toList(),
-                        );
-                      },
+            Expanded(
+              flex: 2,
+              child: Container(
+                // color: CupertinoColors.black,
+                padding: const EdgeInsets.all(10),
+                height: MediaQuery.of(context).size.height * 0.25,
+                child: Row(
+                  // height: double.infinity,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return GridView.count(
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 3,
+                            childAspectRatio: (constraints.maxWidth * 0.25) /
+                                (constraints.maxHeight * 0.17),
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            children:
+                                digitButtons.map(_buildDigitButton).toList(),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final digitButtonHeight =
-                            (constraints.maxHeight - 24) / 4;
-                        final twoRowHeight = digitButtonHeight * 2 + 8;
-                        return Column(
-                          children: [
-                            SizedBox(
-                              height: twoRowHeight,
-                              child: _buildActionButton(
-                                'AC',
-                                () {
-                                  setState(() {
-                                    _inputController.clear();
-                                    _result = '';
-                                  });
-                                },
+                    const SizedBox(width: 8),
+                    Expanded(
+                      // flex: ,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final digitButtonHeight =
+                              (constraints.maxHeight) * 0.22;
+                          final twoRowHeight = digitButtonHeight * 2 + 8;
+                          return Column(
+                            children: [
+                              SizedBox(
+                                height: twoRowHeight,
+                                child: _buildActionButton(
+                                  'AC',
+                                  () {
+                                    setState(() {
+                                      _inputController.clear();
+                                      _result = '';
+                                    });
+                                  },
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: twoRowHeight,
-                              child: _buildActionButton(
-                                'del',
-                                _onDelete,
-                                icon: FluentIcons.backspace_24_filled,
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                height: twoRowHeight,
+                                child: _buildActionButton(
+                                  'del',
+                                  _onDelete,
+                                  icon: FluentIcons.backspace_24_filled,
+                                ),
                               ),
-                            ),
-                          ],
-                        );
-                      },
+                            ],
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

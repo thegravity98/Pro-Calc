@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'base_converter_page.dart';
+import '../base_converter_page.dart';
 
 class ForceConverterPage extends StatelessWidget {
   const ForceConverterPage({super.key});

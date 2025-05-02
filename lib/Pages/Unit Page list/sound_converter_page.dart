@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'base_converter_page.dart';
+import '../base_converter_page.dart';
 
 class SoundConverterPage extends StatelessWidget {
   const SoundConverterPage({super.key});
@@ -23,7 +23,8 @@ class SoundConverterPage extends StatelessWidget {
           valueInDecibelsSPL = value;
           break;
         case 'Decibels (Power)':
-          valueInDecibelsSPL = value * 2; // Approximate, assumes power to intensity
+          valueInDecibelsSPL =
+              value * 2; // Approximate, assumes power to intensity
           break;
         case 'Neper':
           valueInDecibelsSPL = value * 8.686; // 1 Np = 8.686 dB

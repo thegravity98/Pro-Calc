@@ -3,7 +3,38 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../models/calculation_history.dart';
+import 'package:flutter/cupertino.dart';
 // import 'package:flutter/services.dart';
+
+// Color constants
+class AppColors {
+  // Dark mode colors
+  static const darkSnackBarBackground = Color.fromRGBO(60, 60, 60, 0.80);
+  static const lightSnackBarBackground = Color.fromRGBO(240, 240, 240, 1);
+  static const snackBarTextColor = Colors.white;
+  // static const transparentColor = Color.transparent;
+
+  // Icon and text colors
+  static final darkGrey = Colors.grey[400];
+  static final lightGrey = Colors.grey;
+  static final darkGreyText = Colors.black12;
+  static final lightTimestampColor =
+      Colors.grey[600]; // More visible timestamp color for light mode
+
+  // Button colors
+  static final darkRedButton = Colors.red[900];
+  static final lightRedButton = Colors.red[100];
+  static final darkIconColor = Colors.white.withOpacity(0.87);
+  static const lightIconColor = Colors.black87;
+
+  // Shadow colors
+  static final darkShadow = Colors.black.withOpacity(0.3);
+  static final lightShadow = Colors.grey.withOpacity(0.2);
+
+  // History card colors
+  static const darkCardBackground = Color.fromRGBO(40, 40, 40, 1);
+  static const lightCardBackground = Color.fromRGBO(245, 245, 245, 1);
+}
 
 class HistoryPage extends StatefulWidget {
   final List<CalculationHistory> history;
@@ -32,15 +63,20 @@ class _HistoryPageState extends State<HistoryPage> {
         child: SafeArea(
           child: Container(
             decoration: BoxDecoration(
-              color: const Color.fromRGBO(20, 20, 20, 0.60),
+              color: CupertinoTheme.of(context).brightness == Brightness.dark
+                  ? Color.fromRGBO(50, 50, 50, 0.9) // Darker snackbar
+                  : Color.fromRGBO(230, 230, 230, 0.9), // Lighter snackbar
               borderRadius: BorderRadius.circular(10),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: const Center(
+            child: Center(
               child: Text(
                 'History Cleared',
                 style: TextStyle(
-                  color: Colors.white,
+                  color:
+                      CupertinoTheme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black87,
                   fontSize: 16,
                 ),
               ),
@@ -61,22 +97,30 @@ class _HistoryPageState extends State<HistoryPage> {
     return Stack(
       children: [
         Material(
-          color: Colors.transparent,
+          color: CupertinoTheme.of(context).brightness == Brightness.dark
+              ? Color.fromRGBO(30, 30, 30, 1) // Dark background
+              : Color.fromRGBO(240, 240, 240, 1), // Light background
           child: widget.history.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         FluentIcons.history_24_regular,
                         size: 48,
-                        color: Colors.grey,
+                        color: CupertinoTheme.of(context).brightness ==
+                                Brightness.dark
+                            ? AppColors.darkGrey
+                            : AppColors.lightGrey,
                       ),
                       SizedBox(height: 16),
                       Text(
                         'No calculations yet',
                         style: TextStyle(
-                          color: Colors.grey,
+                          color: CupertinoTheme.of(context).brightness ==
+                                  Brightness.dark
+                              ? AppColors.darkGrey
+                              : AppColors.lightGrey,
                           fontSize: 18,
                         ),
                       ),
@@ -105,11 +149,18 @@ class _HistoryPageState extends State<HistoryPage> {
                             },
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.grey[50],
+                                color: CupertinoTheme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? AppColors.darkCardBackground
+                                    : AppColors.lightCardBackground,
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.grey.withOpacity(0.2),
+                                    color:
+                                        CupertinoTheme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? AppColors.darkShadow
+                                            : AppColors.lightShadow,
                                     spreadRadius: 1,
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
@@ -123,18 +174,26 @@ class _HistoryPageState extends State<HistoryPage> {
                                   children: [
                                     Row(
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           FluentIcons.history_24_regular,
                                           size: 20,
-                                          color: Colors.grey,
+                                          color: CupertinoTheme.of(context)
+                                                      .brightness ==
+                                                  Brightness.dark
+                                              ? AppColors.darkGrey
+                                              : AppColors.lightGrey,
                                         ),
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
                                             entry.expression,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 18,
-                                              color: Colors.black87,
+                                              color: CupertinoTheme.of(context)
+                                                  .textTheme
+                                                  .textStyle
+                                                  .color!
+                                                  .withOpacity(0.87),
                                             ),
                                             overflow: TextOverflow
                                                 .ellipsis, // Show '...' if too long
@@ -148,10 +207,13 @@ class _HistoryPageState extends State<HistoryPage> {
                                     const SizedBox(height: 8),
                                     Text(
                                       '= ${entry.result}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 24,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.black,
+                                        color: CupertinoTheme.of(context)
+                                            .textTheme
+                                            .textStyle
+                                            .color,
                                       ),
                                       overflow: TextOverflow
                                           .ellipsis, // Handle potential overflow
@@ -164,7 +226,11 @@ class _HistoryPageState extends State<HistoryPage> {
                                       _formatTimestamp(entry.timestamp),
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey[600],
+                                        color: CupertinoTheme.of(context)
+                                                    .brightness ==
+                                                Brightness.dark
+                                            ? AppColors.darkGrey
+                                            : AppColors.lightTimestampColor,
                                       ),
                                     ),
                                   ],
@@ -187,11 +253,16 @@ class _HistoryPageState extends State<HistoryPage> {
                 widget.onClear?.call();
                 _showSnackBar();
               },
-              backgroundColor: Colors.red[100],
+              backgroundColor:
+                  CupertinoTheme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkRedButton
+                      : AppColors.lightRedButton,
               elevation: 4,
-              child: const Icon(
+              child: Icon(
                 FluentIcons.broom_24_regular,
-                color: Colors.black87,
+                color: CupertinoTheme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkIconColor
+                    : AppColors.lightIconColor,
               ),
             ),
           ),

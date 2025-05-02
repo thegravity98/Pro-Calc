@@ -1,16 +1,11 @@
 import 'package:flutter/cupertino.dart';
-import 'base_converter_page.dart';
+import '../base_converter_page.dart';
 
 class IlluminanceConverterPage extends StatelessWidget {
   const IlluminanceConverterPage({super.key});
 
   // Available units for conversion
-  static final List<String> _units = [
-    'Lux',
-    'Foot-Candles',
-    'Phot',
-    'Nox'
-  ];
+  static final List<String> _units = ['Lux', 'Foot-Candles', 'Phot', 'Nox'];
 
   // Conversion rates based on 1 unit = X Lux
   static final Map<String, double> _conversionRatesFromLux = {

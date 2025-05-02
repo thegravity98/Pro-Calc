@@ -167,8 +167,8 @@ final lightTheme = CupertinoThemeData(
   brightness: Brightness.light,
   primaryColor: CupertinoColors.activeBlue,
   // Use existing CupertinoColors for light theme
-  barBackgroundColor: CupertinoColors.systemGroupedBackground,
-  scaffoldBackgroundColor: CupertinoColors.systemGrey2,
+  barBackgroundColor: Color.fromRGBO(242, 242, 242, 0),
+  scaffoldBackgroundColor: Color.fromRGBO(242, 242, 242, 1),
   textTheme: const CupertinoTextThemeData(
     textStyle: TextStyle(
       fontFamily: 'Inter',
@@ -206,8 +206,9 @@ final darkTheme = CupertinoThemeData(
   brightness: Brightness.dark,
   primaryColor: CupertinoColors.systemIndigo, // Example dark primary color
   // Define dark theme colors
-  barBackgroundColor: CupertinoColors.systemGrey6,
-  scaffoldBackgroundColor: CupertinoColors.black,
+  barBackgroundColor: Color.fromRGBO(10, 10, 10, 0),
+
+  scaffoldBackgroundColor: Color.fromRGBO(10, 10, 10, 1),
   textTheme: const CupertinoTextThemeData(
     textStyle: TextStyle(
       fontFamily: 'Inter',

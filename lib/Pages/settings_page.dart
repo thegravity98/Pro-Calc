@@ -50,19 +50,11 @@ class SettingsModalContent extends ConsumerWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   'Settings',
                   style: currentTheme.textTheme.navTitleTextStyle,
-                ),
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: onClose,
-                  child: Icon(
-                    CupertinoIcons.xmark_circle_fill,
-                    color: currentTheme.primaryColor.withOpacity(0.6),
-                  ),
                 ),
               ],
             ),
@@ -79,17 +71,15 @@ class SettingsModalContent extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Text(
-                              "Theme",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: currentTheme.textTheme.textStyle.color,
-                              ),
+                          Text(
+                            "Theme",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: currentTheme.textTheme.textStyle.color,
                             ),
                           ),
+                          const SizedBox(width: 8),
                           const Spacer(),
                           Expanded(
                             child: _buildThemeButton(
@@ -157,7 +147,7 @@ class SettingsModalContent extends ConsumerWidget {
       padding: EdgeInsets.zero,
       onPressed: onPressed,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
         decoration: BoxDecoration(
           color: isSelected
               ? CupertinoColors.activeBlue
@@ -171,24 +161,29 @@ class SettingsModalContent extends ConsumerWidget {
           ),
         ),
         child: Row(
-          // mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               color: isSelected
                   ? CupertinoColors.white
                   : currentTheme.textTheme.textStyle.color!.withOpacity(0.7),
-              size: 20,
+              size: 16,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isSelected
-                    ? CupertinoColors.white
-                    : currentTheme.textTheme.textStyle.color!.withOpacity(0.7),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isSelected
+                      ? CupertinoColors.white
+                      : currentTheme.textTheme.textStyle.color!
+                          .withOpacity(0.7),
+                ),
               ),
             ),
           ],

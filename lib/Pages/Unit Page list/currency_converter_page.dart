@@ -1,17 +1,11 @@
 import 'package:flutter/cupertino.dart';
-import 'base_converter_page.dart';
+import '../base_converter_page.dart';
 
 class CurrencyConverterPage extends StatelessWidget {
   const CurrencyConverterPage({super.key});
 
   // Available units for conversion (sample currencies)
-  static final List<String> _units = [
-    'USD',
-    'EUR',
-    'GBP',
-    'JPY',
-    'AUD'
-  ];
+  static final List<String> _units = ['USD', 'EUR', 'GBP', 'JPY', 'AUD'];
 
   // Conversion rates based on 1 unit = X USD (static, for demonstration)
   static final Map<String, double> _conversionRatesFromUSD = {

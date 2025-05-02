@@ -1528,21 +1528,45 @@ class _CalcPageState extends ConsumerState<CalcPage>
             ? CupertinoColors.systemGreen.withOpacity(0.3)
             : CupertinoColors.systemOrange.withOpacity(0.3);
       case 'X':
-        return CupertinoColors.systemPurple.withOpacity(0.3);
+        return isDarkMode
+            ? CupertinoColors.systemPurple.withOpacity(0.6)
+            : CupertinoColors.systemPurple.withOpacity(0.3);
+
       case 'Y':
-        return CupertinoColors.systemTeal.withOpacity(0.3);
+        return isDarkMode
+            ? CupertinoColors.systemTeal.withOpacity(0.6)
+            : CupertinoColors.systemTeal.withOpacity(0.3);
+
       case 'shft':
         return isShift
             ? CupertinoColors.systemIndigo.withOpacity(0.4)
             : CupertinoColors.systemIndigo.withOpacity(0.3);
       case 'AC':
-        return CupertinoColors.systemRed.withOpacity(0.3);
+        return isDarkMode
+            ? CupertinoColors.systemRed.withOpacity(0.6)
+            : CupertinoColors.systemRed.withOpacity(0.3);
+
       case '=':
         return CupertinoColors.activeBlue.withOpacity(0.5);
       case 'del':
         return isDarkMode
-            ? CupertinoColors.systemGrey2
-            : CupertinoColors.systemGrey5;
+            ? Color.fromRGBO(30, 30, 30, 1)
+            : Color.fromRGBO(229, 229, 234, 1);
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
+      case '00':
+      case '.':
+        return isDarkMode
+            ? Color.fromRGBO(16, 16, 16, 1)
+            : Color.fromRGBO(250, 250, 250, 1);
       case 'hist':
       case 'unit':
       case 'Settings':
@@ -1553,8 +1577,8 @@ class _CalcPageState extends ConsumerState<CalcPage>
             .barBackgroundColor; // Use bar background for these
       default:
         return isDarkMode
-            ? CupertinoColors.systemGrey2
-            : CupertinoColors.white; // Default button color
+            ? Color.fromRGBO(30, 30, 30, 1)
+            : Color.fromRGBO(229, 229, 234, 1); // Default button color
     }
   }
 
@@ -1565,18 +1589,18 @@ class _CalcPageState extends ConsumerState<CalcPage>
         return CupertinoColors.systemRed;
       case '=':
         return CupertinoColors.white;
-      case 'hist':
-      case 'unit':
-      case 'Settings':
-      case 'Calc':
-        return isDarkMode
-            ? CupertinoColors.systemGrey3
-            : CupertinoColors.systemGrey3; // Consistent grey for icons
-      case 'Copy':
-      case 'Paste':
-        return isDarkMode
-            ? CupertinoColors.systemGrey
-            : CupertinoColors.systemGrey; // Consistent grey for icons
+      // case 'hist':
+      // case 'unit':
+      // case 'Settings':
+      // case 'Calc':
+      //   return isDarkMode
+      //       ? CupertinoColors.systemGrey
+      //       : CupertinoColors.systemGrey; // Consistent grey for icons
+      // case 'Copy':
+      // case 'Paste':
+      //   return isDarkMode
+      //       ? CupertinoColors.systemGreen
+      //       : CupertinoColors.systemGrey; // Consistent grey for icons
       default:
         return CupertinoTheme.of(context)
             .textTheme
@@ -1634,25 +1658,25 @@ class _CalcPageState extends ConsumerState<CalcPage>
       content = Icon(
         FluentIcons.diversity_24_regular,
         size: btnSize * 0.45,
-        color: CupertinoColors.systemGrey3,
+        color: CupertinoColors.systemGrey,
       );
     } else if (text == 'Calc') {
       content = Icon(
         FluentIcons.calculator_24_filled,
         size: btnSize * 0.45,
-        color: CupertinoColors.systemGrey3,
+        color: CupertinoColors.systemGrey,
       );
     } else if (text == 'hist') {
       content = Icon(
         FluentIcons.history_24_regular,
         size: btnSize * 0.45,
-        color: CupertinoColors.systemGrey3,
+        color: CupertinoColors.systemGrey,
       );
     } else if (text == 'Settings') {
       content = Icon(
         FluentIcons.settings_24_regular,
         size: btnSize * 0.45,
-        color: CupertinoColors.systemGrey3,
+        color: CupertinoColors.systemGrey,
       );
     } else if (text == 'Copy') {
       content = Icon(
@@ -1690,10 +1714,6 @@ class _CalcPageState extends ConsumerState<CalcPage>
             break;
         }
       }
-      // if (text == 'DEG') {
-      //   buttonColor = isDeg ? buttonColors['DEG']! : buttonColors['RAD']!;
-      // }
-
       content = Text(
         displayText,
         style: TextStyle(
@@ -2197,29 +2217,18 @@ class _CalcPageState extends ConsumerState<CalcPage>
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20.0, vertical: 10.0),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        'Unit Converter',
-                        style: currentTheme.textTheme
-                            .navTitleTextStyle, // Use theme text style
-                      ),
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        child: Icon(
-                          CupertinoIcons.xmark_circle_fill,
-                          color: currentTheme.primaryColor
-                              .withOpacity(0.6), // Use a theme color
-                        ),
-                        onPressed: () => Navigator.pop(modalContext),
-                      ),
+                      // Center handle only, no close button
+                      const SizedBox.shrink(),
                     ],
                   ),
                 ),
-                // Grid Content
+                // Full Tools Page with tabs
                 Expanded(
-                  child:
-                      ToolsGridContent(), // ToolsGridContent still uses Cupertino colors
+                  child: ToolsPage(
+                      isModal:
+                          true), // Use the full ToolsPage with tabs in modal mode
                 ),
               ],
             ),

@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'base_converter_page.dart';
+import '../base_converter_page.dart';
 
 class TimeConverterPage extends StatelessWidget {
   const TimeConverterPage({super.key});
