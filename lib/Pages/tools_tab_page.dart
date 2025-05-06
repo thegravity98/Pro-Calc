@@ -1,5 +1,18 @@
+// lib/pages/tools_tab_page.dart (or your path)
+
 import 'package:flutter/cupertino.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+
+// Import the new tool pages
+import 'date_calc_page.dart';
+// import 'calculators/mortgage_page.dart';
+// import 'calculators/currency_converter_page.dart';
+// import 'calculators/discount_calc_page.dart';
+// import 'calculators/time_zone_converter_page.dart';
+// import 'calculators/bmi_calc_page.dart';
+import 'fuel_cost_calc_page.dart';
+// import 'calculators/tip_calc_page.dart';
+import 'loan_calc_page.dart';
 
 class ToolsTabPage extends StatelessWidget {
   const ToolsTabPage({super.key});
@@ -7,8 +20,7 @@ class ToolsTabPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      // Removed navigation bar as requested
-      navigationBar: null,
+      navigationBar: null, // No top navigation bar for the tab itself
       child: SafeArea(
         child: ToolsTabGridContent(),
       ),
@@ -20,18 +32,27 @@ class ToolsTabGridContent extends StatelessWidget {
   ToolsTabGridContent({super.key});
 
   final List<Map<String, dynamic>> toolsList = [
-    {'name': 'Calculator', 'icon': FluentIcons.calculator_24_regular},
-    {'name': 'Scientific', 'icon': FluentIcons.math_formula_24_regular},
-    {'name': 'Programmer', 'icon': FluentIcons.code_24_regular},
-    {'name': 'Date Calc', 'icon': FluentIcons.calendar_24_regular},
-    {'name': 'Mortgage', 'icon': FluentIcons.home_24_regular},
-    {'name': 'Currency', 'icon': FluentIcons.money_24_regular},
-    {'name': 'Discount', 'icon': FluentIcons.tag_24_regular},
-    {'name': 'Time Zone', 'icon': FluentIcons.globe_24_regular},
-    {'name': 'BMI', 'icon': FluentIcons.person_24_regular},
-    {'name': 'Fuel Cost', 'icon': FluentIcons.gas_pump_24_regular},
-    {'name': 'Tip Calc', 'icon': FluentIcons.food_24_regular},
-    {'name': 'Loan Calc', 'icon': FluentIcons.money_hand_24_regular},
+    {
+      'name': 'Date Calc',
+      'icon': FluentIcons.calendar_24_regular,
+      'page': const DateCalcPage()
+    },
+    // {'name': 'Mortgage', 'icon': FluentIcons.home_24_regular, 'page': const MortgagePage()},
+    // {'name': 'Currency', 'icon': FluentIcons.money_24_regular, 'page': const CurrencyConverterPage()},
+    // {'name': 'Discount', 'icon': FluentIcons.tag_24_regular, 'page': const DiscountCalcPage()},
+    // {'name': 'Time Zone', 'icon': FluentIcons.globe_24_regular, 'page': const TimeZoneConverterPage()},
+    // {'name': 'BMI', 'icon': FluentIcons.person_24_regular, 'page': const BmiCalcPage()},
+    {
+      'name': 'Fuel Cost',
+      'icon': FluentIcons.gas_pump_24_regular,
+      'page': const FuelCostCalcPage()
+    },
+    // {'name': 'Tip Calc', 'icon': FluentIcons.food_24_regular, 'page': const TipCalcPage()},
+    {
+      'name': 'Loan Calc',
+      'icon': FluentIcons.money_hand_24_regular,
+      'page': const LoanCalcPage()
+    },
   ];
 
   @override
@@ -46,32 +67,46 @@ class ToolsTabGridContent extends StatelessWidget {
       ),
       itemCount: toolsList.length,
       itemBuilder: (context, index) {
+        final tool = toolsList[index];
         return GestureDetector(
           onTap: () {
-            // TODO: Implement tool functionality
+            if (tool['page'] != null) {
+              Navigator.of(context).push(
+                CupertinoPageRoute(
+                    builder: (context) => tool['page'] as Widget),
+              );
+            } else {
+              // Fallback for any tool that might not have a page defined yet
+              print('Tapped on: ${tool['name']}, but no page is defined.');
+            }
           },
           child: Container(
             decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey6,
+              color: CupertinoTheme.of(context).brightness == Brightness.dark
+                  ? CupertinoColors.darkBackgroundGray.withOpacity(0.5)
+                  : CupertinoColors.systemGrey6,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  toolsList[index]['icon'],
+                  tool['icon'],
                   size: 32,
-                  color: CupertinoColors.activeBlue,
+                  color: CupertinoTheme.of(context).primaryColor,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  toolsList[index]['name'],
-                  style: const TextStyle(
+                  tool['name'],
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     fontFamily: 'Inter',
+                    color: CupertinoTheme.of(context).textTheme.textStyle.color,
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

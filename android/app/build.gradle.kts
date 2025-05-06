@@ -31,13 +31,34 @@ android {
         versionName = flutter.versionName
     }
 
+    // buildTypes {
+    //     release {
+    //         // TODO: Add your own signing config for the release build.
+    //         // Signing with the debug keys for now, so `flutter run --release` works.
+    //         // signingConfig = signingConfigs.getByName("debug")
+    //     }
+    // }
+
+   signingConfigs {
+    create("release") {
+        val storeFilePath = System.getenv("ANDROID_STORE_FILE") ?: project.property("MYAPP_RELEASE_STORE_FILE").toString()
+        println("Store file path: $storeFilePath")
+        storeFile = file(storeFilePath)
+        storePassword = System.getenv("ANDROID_STORE_PASSWORD") ?: project.property("MYAPP_RELEASE_STORE_PASSWORD").toString()
+        keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: project.property("MYAPP_RELEASE_KEY_ALIAS").toString()
+        keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: project.property("MYAPP_RELEASE_KEY_PASSWORD").toString()
+    }
+}
+
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            isMinifyEnabled = true // Enable code shrinking
+            isShrinkResources = true // Enable resource shrinking
+            signingConfig = signingConfigs.getByName("release")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
 }
 
 flutter {
