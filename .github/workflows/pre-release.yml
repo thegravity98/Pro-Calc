@@ -25,6 +25,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Cache Flutter SDK
         uses: actions/cache@v4
         with:
@@ -40,8 +43,8 @@ jobs:
       - name: Install Android SDK build-tools
         run: |
           sdkmanager --install "build-tools;34.0.0"
-          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-          echo "/usr/local/lib/android/sdk/build-tools/34.0.0" >> $GITHUB_PATH
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
 
       - name: Cache Flutter dependencies
         uses: actions/cache@v4
@@ -64,7 +67,7 @@ jobs:
           alias: ${{ secrets.ANDROID_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          buildToolsVersion: '34.0.0'  # Specify the build-tools version
+          buildToolsVersion: '34.0.0'
 
       - name: Find Signed APK
         id: find_signed_apk
@@ -89,6 +92,6 @@ jobs:
             Commit: ${{ github.sha }}
           prerelease: true
           draft: false
-          files: ${{ steps.find_signed_apklon_apk_path }}
+          files: ${{ steps.find_signed_apk.outputs.signed_apk_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
