@@ -39,14 +39,17 @@ android {
     //     }
     // }
 
-      signingConfigs {
+    signingConfigs {
         create("release") {
-            val storeFilePath = System.getenv("ANDROID_STORE_FILE") ?: project.property("MYAPP_RELEASE_STORE_FILE").toString()
-            println("Store file path: $storeFilePath")
-            storeFile = file(storeFilePath)
-            storePassword = System.getenv("ANDROID_STORE_PASSWORD") ?: project.property("MYAPP_RELEASE_STORE_PASSWORD").toString()
-            keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: project.property("MYAPP_RELEASE_KEY_ALIAS").toString()
-            keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: project.property("MYAPP_RELEASE_KEY_PASSWORD").toString()
+            // Only configure signing if not in CI
+            if (System.getenv("CI") != "true") {
+                val storeFilePath = System.getenv("ANDROID_STORE_FILE") ?: project.property("MYAPP_RELEASE_STORE_FILE").toString()
+                println("Store file path: $storeFilePath")
+                storeFile = file(storeFilePath)
+                storePassword = System.getenv("ANDROID_STORE_PASSWORD") ?: project.property("MYAPP_RELEASE_STORE_PASSWORD").toString()
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: project.property("MYAPP_RELEASE_KEY_ALIAS").toString()
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: project.property("MYAPP_RELEASE_KEY_PASSWORD").toString()
+            }
         }
     }
 
