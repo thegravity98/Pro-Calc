@@ -73,7 +73,7 @@ jobs:
           echo "APK found: $APK_PATH"
           echo "apk_path=$APK_PATH" >> $GITHUB_ENV
 
-            - name: Sign Android release
+      - name: Sign Android release
         run: |
           # Path of the unsigned APK from the build step
           UNSIGNED_APK_PATH="${{ env.apk_path }}"
