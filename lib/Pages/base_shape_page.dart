@@ -1172,7 +1172,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
                             padding: EdgeInsets.zero,
                             onPressed: () => _copyToClipboard(
                                 '$displayText $currentDisplayUnitSymbol'),
-                            minimumSize: Size(0, 0),
+                            // minimumSize: Size(0, 0),
                             child: Icon(
                               FluentIcons.copy_20_regular,
                               size: 18,
