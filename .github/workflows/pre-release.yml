@@ -73,16 +73,33 @@ jobs:
           echo "APK found: $APK_PATH"
           echo "apk_path=$APK_PATH" >> $GITHUB_ENV
 
-      - name: Sign Android release
+            - name: Sign Android release
         run: |
-          # Debug: List files before signing
-          echo "Before signing, APK path: ${{ env.apk_path }}"
-          ls -la $(dirname "${{ env.apk_path }}")
+          # Path of the unsigned APK from the build step
+          UNSIGNED_APK_PATH="${{ env.apk_path }}"
+          # Define intermediate and final paths
+          UNSIGNED_ALIGNED_APK_PATH="build/app/outputs/apk/release/app-release-unsigned-aligned.apk"
+          SIGNED_APK_PATH="build/app/outputs/apk/release/app-release.apk" # Final output name
+
+          echo "Debug: Unsigned APK path before alignment: $UNSIGNED_APK_PATH"
+          ls -la $(dirname "$UNSIGNED_APK_PATH")
+
           # Decode the base64-encoded keystore
           echo "${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}" | base64 -d > keystore.jks
           # Verify keystore
           keytool -list -keystore keystore.jks -storepass "${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" -v
-          # Sign the APK with apksigner
+
+          # 1. Align the unsigned APK
+          echo "Aligning $UNSIGNED_APK_PATH to $UNSIGNED_ALIGNED_APK_PATH..."
+          $ANDROID_HOME/build-tools/34.0.0/zipalign -v -p 4 \
+            "$UNSIGNED_APK_PATH" \
+            "$UNSIGNED_ALIGNED_APK_PATH"
+          
+          echo "Verifying alignment of $UNSIGNED_ALIGNED_APK_PATH..."
+          $ANDROID_HOME/build-tools/34.0.0/zipalign -c -v 4 "$UNSIGNED_ALIGNED_APK_PATH"
+
+          # 2. Sign the aligned-unsigned APK
+          echo "Signing $UNSIGNED_ALIGNED_APK_PATH to $SIGNED_APK_PATH..."
           $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
             --ks keystore.jks \
             --ks-pass pass:"${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
@@ -90,20 +107,21 @@ jobs:
             --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
             --v1-signing-enabled true \
             --v2-signing-enabled true \
-            --out build/app/outputs/apk/release/app-release.apk \
-            "${{ env.apk_path }}"
-          # Align the APK
-          $ANDROID_HOME/build-tools/34.0.0/zipalign -v -p 4 \
-            build/app/outputs/apk/release/app-release.apk \
-            build/app/outputs/apk/release/app-release-aligned.apk
-          mv build/app/outputs/apk/release/app-release-aligned.apk build/app/outputs/apk/release/app-release.apk
-          # Verify alignment
-          $ANDROID_HOME/build-tools/34.0.0/zipalign -c -v 4 build/app/outputs/apk/release/app-release.apk
-          # Verify signatures
-          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose build/app/outputs/apk/release/app-release.apk
-          jarsigner -verify -verbose -certs build/app/outputs/apk/release/app-release.apk
-          # Update apk_path for release
-          echo "apk_path=build/app/outputs/apk/release/app-release.apk" >> $GITHUB_ENV
+            --v3-signing-enabled true \ # Good to enable v3
+            --v4-signing-enabled true \ # Good to enable v4 if supported by target devices/build tools
+            --out "$SIGNED_APK_PATH" \
+            "$UNSIGNED_ALIGNED_APK_PATH" # Sign the aligned version
+
+          # 3. Verify signatures of the final APK
+          echo "Verifying signatures of $SIGNED_APK_PATH with apksigner..."
+          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose "$SIGNED_APK_PATH"
+          
+          echo "Verifying signatures of $SIGNED_APK_PATH with jarsigner..."
+          jarsigner -verify -verbose -certs "$SIGNED_APK_PATH"
+
+          # Update apk_path to point to the final signed APK for subsequent steps
+          echo "Final signed APK path for release: $SIGNED_APK_PATH"
+          echo "apk_path=$SIGNED_APK_PATH" >> $GITHUB_ENV
         env:
           ANDROID_KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -112,9 +130,10 @@ jobs:
       - name: Find Signed APK
         id: find_signed_apk
         run: |
-          SIGNED_APK=build/app/outputs/apk/release/app-release.apk
+          # env.apk_path is now correctly set to the final signed APK path by the previous step
+          SIGNED_APK="${{ env.apk_path }}"
           if [ ! -f "$SIGNED_APK" ]; then
-            echo "Signed APK not found!"
+            echo "Signed APK ($SIGNED_APK) not found!"
             exit 1
           fi
           echo "Signed APK found: $SIGNED_APK"
