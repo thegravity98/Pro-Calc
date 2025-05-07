@@ -39,22 +39,22 @@ android {
     //     }
     // }
 
-   signingConfigs {
-    create("release") {
-        val storeFilePath = System.getenv("ANDROID_STORE_FILE") ?: project.property("MYAPP_RELEASE_STORE_FILE").toString()
-        println("Store file path: $storeFilePath")
-        storeFile = file(storeFilePath)
-        storePassword = System.getenv("ANDROID_STORE_PASSWORD") ?: project.property("MYAPP_RELEASE_STORE_PASSWORD").toString()
-        keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: project.property("MYAPP_RELEASE_KEY_ALIAS").toString()
-        keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: project.property("MYAPP_RELEASE_KEY_PASSWORD").toString()
+      signingConfigs {
+        create("release") {
+            val storeFilePath = System.getenv("ANDROID_STORE_FILE") ?: project.property("MYAPP_RELEASE_STORE_FILE").toString()
+            println("Store file path: $storeFilePath")
+            storeFile = file(storeFilePath)
+            storePassword = System.getenv("ANDROID_STORE_PASSWORD") ?: project.property("MYAPP_RELEASE_STORE_PASSWORD").toString()
+            keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: project.property("MYAPP_RELEASE_KEY_ALIAS").toString()
+            keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: project.property("MYAPP_RELEASE_KEY_PASSWORD").toString()
+        }
     }
-}
 
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = true // Enable code shrinking
-            isShrinkResources = true // Enable resource shrinking
-            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = if (System.getenv("CI") == "true") null else signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
