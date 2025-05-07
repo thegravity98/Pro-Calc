@@ -16,21 +16,47 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch || 'dev' }} # Use input branch or default to dev
+          ref: ${{ github.event.inputs.branch || 'dev' }}
+          fetch-depth: 0
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Cache Flutter SDK
+        uses: actions/cache@v4
+        with:
+          path: /opt/hostedtoolcache/flutter
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/.flutter-version') }}
+          restore-keys: ${{ runner.os }}-flutter-
+
       - name: Set up Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+
+      - name: Install Android SDK build-tools
+        run: |
+          sdkmanager --install "build-tools;34.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "/usr/local/lib/android/sdk/build-tools/34.0.0" >> $GITHUB_PATH
+
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
       - name: Install Flutter dependencies
         run: flutter pub get
+
       - name: Build Release APK
-        run: flutter build apk --release
-      - name: Sign APK
+        run: flutter build apk --release --stacktrace --debug
+
+      - name: Sign Android release
         uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: build/app/outputs/apk/release
@@ -38,16 +64,19 @@ jobs:
           alias: ${{ secrets.ANDROID_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          buildToolsVersion: '34.0.0'  # Specify the build-tools version
+
       - name: Find Signed APK
         id: find_signed_apk
         run: |
-          SIGNED_APK=$(find build/app/outputs/apk/release -name "*-release-signed.apk" | head -n 1)
+          SIGNED_APK=$(find build/app/outputs/apk/release -name "*.apk" | head -n 1)
           if [ -z "$SIGNED_APK" ]; then
             echo "Signed APK not found!"
             exit 1
           fi
           echo "Signed APK found: $SIGNED_APK"
           echo "signed_apk_path=$SIGNED_APK" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Pre-release and Upload APK
         if: ${{ steps.find_signed_apk.outputs.signed_apk_path != '' }}
         uses: softprops/action-gh-release@v1
@@ -60,6 +89,6 @@ jobs:
             Commit: ${{ github.sha }}
           prerelease: true
           draft: false
-          files: ${{ steps.find_signed_apk.outputs.signed_apk_path }}
+          files: ${{ steps.find_signed_apklon_apk_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
