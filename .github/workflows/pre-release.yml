@@ -59,6 +59,18 @@ jobs:
       - name: Build Release APK
         run: flutter build apk --release --verbose
 
+      - name: Check APK Output
+        run: |
+          echo "Listing files in build/app/outputs/apk/release:"
+          ls -la build/app/outputs/apk/release || echo "Directory empty or does not exist"
+          APK_PATH=$(find build/app/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "No APK found!"
+            exit 1
+          fi
+          echo "APK found: $APK_PATH"
+          echo "apk_path=$APK_PATH" >> $GITHUB_ENV
+
       - name: Sign Android release
         run: |
           # Decode the base64-encoded keystore
@@ -68,10 +80,10 @@ jobs:
             -keystore keystore.jks \
             -storepass "${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
             -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
-            build/app/outputs/apk/release/app-release.apk \
+            "${{ env.apk_path }}" \
             "${{ secrets.ANDROID_KEY_ALIAS }}"
           # Verify the signature
-          jarsigner -verify -verbose build/app/outputs/apk/release/app-release.apk
+          jarsigner -verify -verbose "${{ env.apk_path }}"
         env:
           ANDROID_KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
