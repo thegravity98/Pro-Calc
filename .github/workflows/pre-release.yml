@@ -57,7 +57,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Release APK
-        run: flutter build apk --release --stacktrace --debug
+        run: flutter build apk --release --verbose
 
       - name: Sign Android release
         uses: r0adkll/sign-android-release@v1
