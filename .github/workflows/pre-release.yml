@@ -75,17 +75,35 @@ jobs:
 
       - name: Sign Android release
         run: |
+          # Debug: List files before signing
+          echo "Before signing, APK path: ${{ env.apk_path }}"
+          ls -la $(dirname "${{ env.apk_path }}")
           # Decode the base64-encoded keystore
           echo "${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}" | base64 -d > keystore.jks
-          # Sign the APK
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore keystore.jks \
-            -storepass "${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
-            -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
-            "${{ env.apk_path }}" \
-            "${{ secrets.ANDROID_KEY_ALIAS }}"
-          # Verify the signature
-          jarsigner -verify -verbose "${{ env.apk_path }}"
+          # Verify keystore
+          keytool -list -keystore keystore.jks -storepass "${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" -v
+          # Sign the APK with apksigner
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+            --ks keystore.jks \
+            --ks-pass pass:"${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --out build/app/outputs/apk/release/app-release.apk \
+            "${{ env.apk_path }}"
+          # Align the APK
+          $ANDROID_HOME/build-tools/34.0.0/zipalign -v -p 4 \
+            build/app/outputs/apk/release/app-release.apk \
+            build/app/outputs/apk/release/app-release-aligned.apk
+          mv build/app/outputs/apk/release/app-release-aligned.apk build/app/outputs/apk/release/app-release.apk
+          # Verify alignment
+          $ANDROID_HOME/build-tools/34.0.0/zipalign -c -v 4 build/app/outputs/apk/release/app-release.apk
+          # Verify signatures
+          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose build/app/outputs/apk/release/app-release.apk
+          jarsigner -verify -verbose -certs build/app/outputs/apk/release/app-release.apk
+          # Update apk_path for release
+          echo "apk_path=build/app/outputs/apk/release/app-release.apk" >> $GITHUB_ENV
         env:
           ANDROID_KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -94,8 +112,8 @@ jobs:
       - name: Find Signed APK
         id: find_signed_apk
         run: |
-          SIGNED_APK=$(find build/app/outputs/apk/release -name "*.apk" | head -n 1)
-          if [ -z "$SIGNED_APK" ]; then
+          SIGNED_APK=build/app/outputs/apk/release/app-release.apk
+          if [ ! -f "$SIGNED_APK" ]; then
             echo "Signed APK not found!"
             exit 1
           fi
@@ -106,7 +124,7 @@ jobs:
         if: ${{ steps.find_signed_apk.outputs.signed_apk_path != '' }}
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: dev-build-${{ github.run_number }}
+          tag_name: dev-build-${{ github.run_number }}-${{ github.run_id }}
           name: Dev Build #${{ github.run_number }}
           body: |
             Pre-release build from ${{ github.event.inputs.branch || 'dev' }} branch.
