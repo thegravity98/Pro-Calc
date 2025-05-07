@@ -12,6 +12,8 @@ on:
 jobs:
   build_and_prerelease:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Grant write access for creating releases
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
