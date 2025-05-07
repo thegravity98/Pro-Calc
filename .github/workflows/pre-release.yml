@@ -98,19 +98,15 @@ jobs:
           echo "Verifying alignment of $UNSIGNED_ALIGNED_APK_PATH..."
           $ANDROID_HOME/build-tools/34.0.0/zipalign -c -v 4 "$UNSIGNED_ALIGNED_APK_PATH"
 
-          # 2. Sign the aligned-unsigned APK
+          # 2. Sign the aligned-unsigned APK (removed explicit --vX-signing-enabled true flags)
           echo "Signing $UNSIGNED_ALIGNED_APK_PATH to $SIGNED_APK_PATH..."
           $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
             --ks keystore.jks \
             --ks-pass pass:"${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
             --key-pass pass:"${{ secrets.ANDROID_KEY_PASSWORD }}" \
             --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
-            --v1-signing-enabled true \
-            --v2-signing-enabled true \
-            --v3-signing-enabled true \ # Good to enable v3
-            --v4-signing-enabled true \ # Good to enable v4 if supported by target devices/build tools
             --out "$SIGNED_APK_PATH" \
-            "$UNSIGNED_ALIGNED_APK_PATH" # Sign the aligned version
+            "$UNSIGNED_ALIGNED_APK_PATH"
 
           # 3. Verify signatures of the final APK
           echo "Verifying signatures of $SIGNED_APK_PATH with apksigner..."
