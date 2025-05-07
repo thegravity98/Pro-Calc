@@ -1,0 +1,91 @@
+name: Dev Branch APK Pre-release Build
+
+# Configure the workflow to be triggered manually from the GitHub Actions tab
+on:
+  workflow_dispatch:
+    inputs:
+      # You can add optional inputs here if needed, e.g., for a custom version name
+      # build_version:
+      #   description: 'Optional build version name (e.g., 1.0.0-dev.5)'
+      #   required: false
+      #   default: ''
+
+jobs:
+  build_and_prerelease:
+    runs-on: ubuntu-latest # Use the latest Ubuntu runner
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Checkout the code from the branch that triggered the run
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin' # Use Temurin (recommended)
+          java-version: '17'     # Use a recent LTS version compatible with Android/Flutter
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable' # Or 'beta' or 'dev' if you use those channels
+          # flutter-version: 'x.y.z' # Optional: Specify a specific Flutter version
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Release APK
+        run: flutter build apk --release # Build the release version of the Android APK
+
+      - name: Sign APK
+        # Use a dedicated action for signing the *output* APK from the Flutter build
+        uses: r0adkll/sign-android-release@v1
+        with:
+          # The directory where 'flutter build apk --release' places the unsigned APK
+          releaseDirectory: build/app/outputs/apk/release
+          # Pass the secrets you stored in GitHub Secrets
+          signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}
+          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # The signing action typically outputs a signed APK in the same directory
+          # with '-signed' appended, e.g., 'app-release-signed.apk'.
+
+      - name: Find Signed APK
+        id: find_signed_apk # Give this step an ID to reference its outputs
+        run: |
+          # Find the signed APK file in the release output directory
+          # The signing action usually adds '-signed' to the name
+          SIGNED_APK=$(find build/app/outputs/apk/release -name "*-release-signed.apk" | head -n 1)
+          if [ -z "$SIGNED_APK" ]; then
+            echo "Signed APK not found!"
+            exit 1
+          fi
+          echo "Signed APK found: $SIGNED_APK"
+          # Set the path as a step output variable for the next step
+          echo "signed_apk_path=$SIGNED_APK" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Pre-release and Upload APK
+        # Use an action that handles creating the release and uploading assets
+        uses: softprops/action-gh-release@v1
+        # Only run this step if the signed APK was successfully found
+        if: ${{ steps.find_signed_apk.outputs.signed_apk_path != '' }}
+        with:
+          # Create a tag based on the workflow run number for uniqueness
+          # This tag will be created on the commit that triggered the workflow
+          tag_name: dev-build-${{ github.run_number }}
+          # Name the release for clarity
+          name: Dev Build #${{ github.run_number }}
+          # Add some basic release notes
+          body: |
+            Pre-release build from dev branch.
+            Triggered manually (run #${{ github.run_number }}).
+            Commit: ${{ github.sha }}
+          # Mark this release as a pre-release
+          prerelease: true
+          # Do not create it as a draft (publish immediately)
+          draft: false
+          # Upload the found signed APK file as an asset
+          files: ${{ steps.find_signed_apk.outputs.signed_apk_path }}
+        env:
+          # The GITHUB_TOKEN secret is automatically provided by GitHub Actions
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
