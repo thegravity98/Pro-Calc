@@ -60,13 +60,22 @@ jobs:
         run: flutter build apk --release --verbose
 
       - name: Sign Android release
-        uses: jobobby04/sign-android-release@v1.0.2
-        with:
-          releaseDirectory: build/app/outputs/apk/release
-          signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}
-          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # Decode the base64-encoded keystore
+          echo "${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}" | base64 -d > keystore.jks
+          # Sign the APK
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore keystore.jks \
+            -storepass "${{ secrets.ANDROID_KEY_STORE_PASSWORD }}" \
+            -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            build/app/outputs/apk/release/app-release.apk \
+            "${{ secrets.ANDROID_KEY_ALIAS }}"
+          # Verify the signature
+          jarsigner -verify -verbose build/app/outputs/apk/release/app-release.apk
+        env:
+          ANDROID_KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
 
       - name: Find Signed APK
         id: find_signed_apk
