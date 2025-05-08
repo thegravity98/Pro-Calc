@@ -1,6 +1,6 @@
 # Pro Calc
 
-The Flutter Calculator app integrated with Riverpod. The calculator has sci. calculator by default and unit converter.
+The Flutter Calculator app integrated with Riverpod. The calculator has sci. calculator by default and unit converter. I am also adding more tools.
 
 # Screenshots
 
