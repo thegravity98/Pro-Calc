@@ -3,16 +3,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
-// Import the new tool pages
-import 'date_calc_page.dart';
 // import 'calculators/mortgage_page.dart';
 // import 'calculators/currency_converter_page.dart';
 // import 'calculators/discount_calc_page.dart';
 // import 'calculators/time_zone_converter_page.dart';
 // import 'calculators/bmi_calc_page.dart';
-import 'fuel_cost_calc_page.dart';
 // import 'calculators/tip_calc_page.dart';
-import 'loan_calc_page.dart';
+
+import 'Export_Page_list/tools_page_list.dart';
 
 class ToolsTabPage extends StatelessWidget {
   const ToolsTabPage({super.key});

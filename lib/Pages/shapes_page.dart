@@ -1,10 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'Shape Page list/rectangle_shape_page.dart';
-import 'Shape Page list/square_shape_page.dart';
-import 'Shape Page list/circle_shape_page.dart';
-import 'Shape Page list/triangle_shape_page.dart';
-import 'Shape Page list/trapezoid_shape_page.dart';
+
+import 'Export_Page_list/shape_page_list.dart';
 
 class ShapesPage extends StatelessWidget {
   const ShapesPage({super.key});
