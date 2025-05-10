@@ -1,6 +1,6 @@
 {
-    "name": "myapp",
-    "short_name": "myapp",
+    "name": "Pro Calc",
+    "short_name": "Pro Calc",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

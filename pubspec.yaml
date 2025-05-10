@@ -39,6 +39,9 @@ flutter_launcher_icons:
   android: "launcher_icon" # Can be true, false, or a specific file name like this.
   ios: true
   image_path: "lib/Assets/ProCalc Icon.png"
+  web:
+    generate: true
+    image_path: "lib/Assets/ProCalc Icon.png"
   min_sdk_android: 21 # Optional: Specifies the minimum SDK level for generated adaptive icons
 
 flutter:
