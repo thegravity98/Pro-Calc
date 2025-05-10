@@ -30,10 +30,44 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+
+  flutter_native_splash: ^2.4.6
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.3 # Added version constraint - check pub.dev for the latest
   test_api: ^0.7.4 # Moved from dependencies
 
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: lib/Assets/ProCalc Icon.png
+  android: true
+  ios: true
+  android_12:
+    image: lib/Assets/ProCalc Icon.png # Image for Android 12+ (can be same as legacy)
+    color: "#ffffff"   
+
+# Built flutter_native_splash:create.
+# [Android] Creating default splash images
+# [Android] Updating launch background(s) with splash image path...
+# [Android]  - android/app/src/main/res/drawable/launch_background.xml
+# [Android]  - android/app/src/main/res/drawable-v21/launch_background.xml
+# [Android] Updating styles...
+# [Android]  - android/app/src/main/res/values-v31/styles.xml
+# [Android] No android/app/src/main/res/values-v31/styles.xml found in your Android project
+# [Android] Creating android/app/src/main/res/values-v31/styles.xml and adding it to your Android project
+# [Android]  - android/app/src/main/res/values-night-v31/styles.xml
+# [Android] No android/app/src/main/res/values-night-v31/styles.xml found in your Android project
+# [Android] Creating android/app/src/main/res/values-night-v31/styles.xml and adding it to your Android project
+# [Android]  - android/app/src/main/res/values/styles.xml
+# [Android]  - android/app/src/main/res/values-night/styles.xml
+# [iOS] Creating  images
+# [iOS] Updating ios/Runner/Info.plist for status bar hidden/visible
+# [Web] Creating images
+# [Web] Creating images
+# [Web] Creating background images
+# [Web] Creating CSS
+# [Web] Updating index.html
+  
 # Configuration for flutter_launcher_icons
 flutter_launcher_icons:
   android: "launcher_icon" # Can be true, false, or a specific file name like this.
