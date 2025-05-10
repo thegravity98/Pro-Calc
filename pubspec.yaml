@@ -1,5 +1,5 @@
 name: pro_calc
-description: "A new Flutter project."
+description: "Pro Calc is a powerful calculator app that allows you to perform complex calculations with ease. With its intuitive interface and advanced features, Pro Calc is the perfect tool for students, professionals, and anyone who needs to perform complex calculations on the go."
 publish_to: 'none' # Prevent accidental publishing to pub.dev
 
 version: 1.0.0+1
