@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pro_calc/Pages/utils_theme_provider.dart';
+// import 'font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsModalContent extends ConsumerWidget {
   final VoidCallback onClose;
@@ -125,7 +128,50 @@ class SettingsModalContent extends ConsumerWidget {
                     ],
                   ),
                 ),
-                // ... rest of the code ...
+                // Social Media Links
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        color: currentTheme.primaryColor.withOpacity(0.2),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "Connect with us",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: currentTheme.textTheme.textStyle.color,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildSocialButton(
+                            context: context,
+                            icon: FontAwesomeIcons.github,
+                            url: "https://github.com/thegravity98/Pro-Calc",
+                          ),
+                          const SizedBox(width: 24),
+                          _buildSocialButton(
+                            context: context,
+                            icon: FontAwesomeIcons.xTwitter,
+                            url: "https://x.com/pranavxmeta",
+                          ),
+                          const SizedBox(width: 24),
+                          _buildSocialButton(
+                            context: context,
+                            icon: FontAwesomeIcons.threads,
+                            url: "https://www.threads.com/@pranavxmeta",
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -165,7 +211,7 @@ class SettingsModalContent extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              icon,
+              FontAwesomeIcons.github,
               color: isSelected
                   ? CupertinoColors.white
                   : currentTheme.textTheme.textStyle.color!.withOpacity(0.7),
@@ -187,6 +233,39 @@ class SettingsModalContent extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton({
+    required BuildContext context,
+    required IconData icon,
+    required String url,
+  }) {
+    final currentTheme = CupertinoTheme.of(context);
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: () async {
+        // Launch URL
+        final Uri uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          debugPrint('Could not launch $url');
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: currentTheme.barBackgroundColor,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          color: currentTheme.primaryColor,
+          size: 24,
         ),
       ),
     );

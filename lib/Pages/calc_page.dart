@@ -13,6 +13,7 @@ import 'tools_page.dart';
 import 'history_page.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'settings_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CalcPage extends ConsumerStatefulWidget {
   const CalcPage({super.key});
@@ -1632,19 +1633,8 @@ class _CalcPageState extends ConsumerState<CalcPage>
     final mediaQueryData = MediaQuery.of(context);
     final screenHeight = mediaQueryData.size.height;
 
-    // Color buttonColor = buttonColors[text] ?? CupertinoColors.white;
     Color buttonColor = getButtonColor(context, text);
     Color fgColor = getButtonForegroundColor(context, text);
-    // if (text == 'shft') {
-    //   buttonColor = isShift
-    //       ? CupertinoColors.systemIndigo.withOpacity(0.4)
-    //       : CupertinoColors.systemIndigo.withOpacity(0.3);
-    // }
-
-    // Color fgColor = (text == 'del')
-    //     ? CupertinoColors.systemRed
-    //     : CupertinoColors.label; // AC handled by background
-    // if (text == '=') fgColor = CupertinoColors.white;
 
     Widget content;
     if (text == 'shft') {
@@ -1701,7 +1691,7 @@ class _CalcPageState extends ConsumerState<CalcPage>
       if (isShift && {'sin', 'cos', 'tan', 'log'}.contains(displayText)) {
         switch (displayText) {
           case 'sin':
-            displayText = 'sin⁻¹'; // Unicode superscript -1
+            displayText = 'sin⁻¹';
             break;
           case 'cos':
             displayText = 'cos⁻¹';
@@ -1716,12 +1706,21 @@ class _CalcPageState extends ConsumerState<CalcPage>
       }
       content = Text(
         displayText,
-        style: TextStyle(
-          fontSize: getButtonTextSize(displayText, btnSize),
-          color: fgColor,
-          fontWeight: (text == '=') ? FontWeight.bold : FontWeight.w500,
-          fontFamily: 'Inter',
-        ),
+        style: RegExp(r'^(0|1|2|3|4|5|6|7|8|9|00)$').hasMatch(text)
+            ? TextStyle(
+                fontFamily: 'RedditSans',
+                fontWeight: FontWeight.w400,
+                fontSize: getButtonTextSize(displayText, btnSize),
+                color: fgColor,
+                // fontWeight: (text == '=') ? FontWeight.bold : FontWeight.w500,
+              )
+            : TextStyle(
+                fontFamily: 'RedditSans',
+                fontWeight: FontWeight.w400,
+                fontSize: getButtonTextSize(displayText, btnSize),
+                color: fgColor,
+                // fontWeight: (text == '=') ? FontWeight.100 : FontWeight.w500,
+              ),
       );
     }
 
@@ -1730,36 +1729,17 @@ class _CalcPageState extends ConsumerState<CalcPage>
         text == 'Calc' ||
         text == 'Copy' ||
         text == 'Paste' ||
-        text ==
-            'Settings'); // Apply shadow ONLY if it's NOT one of these buttons
+        text == 'Settings');
     final bool isEnabled = text != 'Calc';
     return Container(
       width: btnSize,
       height: screenHeight * 0.055,
       margin: EdgeInsets.all(btnSize * 0.04),
-      // child: ElevatedButton(
-      //   style: ElevatedButton.styleFrom(
-      //     backgroundColor: buttonColor,
-      //     foregroundColor: fgColor,
-      //     shape: RoundedRectangleBorder(
-      //       borderRadius: BorderRadius.circular(btnSize * 0.33),
-      //     ),
-
-      //     elevation: applyShadow ? 2 : 0, // Use the boolean flag here
-      //     shadowColor: applyShadow
-      //         ? CupertinoColors.systemGrey.withOpacity(0.1)
-      //         : Colors.transparent, // Shadow color
-      //     padding: EdgeInsets.zero,
-      //   ),
-      //   onPressed: isEnabled ? () => buttonPressed(text) : null,
-      //   child: Center(child: content),
-      // )
       decoration: BoxDecoration(
         color: buttonColor,
-        borderRadius: BorderRadius.circular(btnSize * 0.33), // Button radius
-        boxShadow: applyShadow // Use the boolean flag here
+        borderRadius: BorderRadius.circular(btnSize * 0.33),
+        boxShadow: applyShadow
             ? [
-                // Apply shadow if flag is true
                 BoxShadow(
                   color: CupertinoColors.systemGrey.withOpacity(0.1),
                   spreadRadius: 0.5,
@@ -1767,11 +1747,11 @@ class _CalcPageState extends ConsumerState<CalcPage>
                   offset: const Offset(0, 1),
                 ),
               ]
-            : null, // No shadow if flag is false
+            : null,
       ),
       child: CupertinoButton(
         padding: EdgeInsets.zero,
-        borderRadius: BorderRadius.circular(btnSize * 0.33), // Match radius
+        borderRadius: BorderRadius.circular(btnSize * 0.33),
         onPressed: isEnabled ? () => buttonPressed(text) : null,
         child: Center(child: content),
       ),
@@ -1880,6 +1860,8 @@ class _CalcPageState extends ConsumerState<CalcPage>
                                   child: Text(
                                     "${entry.expression} = ${entry.result}",
                                     style: TextStyle(
+                                      fontFamily: 'RedditSans',
+                                      fontWeight: FontWeight.w400,
                                       fontSize: (screenHeight * 0.020).clamp(
                                         12.0,
                                         18.0,
@@ -1887,7 +1869,7 @@ class _CalcPageState extends ConsumerState<CalcPage>
                                       color: currentTheme
                                           .textTheme.textStyle.color!
                                           .withOpacity(0.7),
-                                      fontFamily: 'Inter',
+                                      // fontFamily: '42dots Sans',
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -1922,10 +1904,13 @@ class _CalcPageState extends ConsumerState<CalcPage>
                                 cursorColor: currentTheme.primaryColor,
                                 textAlign: TextAlign.right,
                                 style: TextStyle(
+                                  // 'RedditSans',
+                                  fontWeight: FontWeight.w400,
                                   fontSize: _inputTextSizeAnimation.value,
-                                  color: currentTheme.textTheme.textStyle.color,
-                                  fontWeight: FontWeight.w300,
-                                  fontFamily: 'Inter',
+                                  // color: currentTheme.textTheme.textStyle.color,
+                                  // fontWeight: FontWeight.w400,
+                                  fontFamily: 'RedditSans',
+                                  // fontWeight: FontWeight.w400,,
                                 ),
                                 decoration: null,
                                 maxLines: 1, // Ensure single line
@@ -1979,13 +1964,15 @@ class _CalcPageState extends ConsumerState<CalcPage>
                                     answer,
                                     textAlign: TextAlign.right,
                                     style: TextStyle(
+                                      fontFamily: 'RedditSans',
+                                      fontWeight: FontWeight.w400,
                                       fontSize: _answerTextSizeAnimation.value,
                                       color: isError
                                           ? CupertinoColors.systemRed
                                           : currentTheme
                                               .textTheme.textStyle.color,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'Inter',
+                                      // fontWeight: FontWeight.w500,
+                                      // fontFamily: .inter',
                                     ),
                                   ),
                                 ),
