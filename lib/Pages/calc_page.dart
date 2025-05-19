@@ -13,7 +13,7 @@ import 'tools_page.dart';
 import 'history_page.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'settings_page.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'utils_settings_provider.dart';
 
 class CalcPage extends ConsumerStatefulWidget {
   const CalcPage({super.key});
@@ -70,43 +70,104 @@ class _CalcPageState extends ConsumerState<CalcPage>
   static const _historyKey = 'calculator_history_v8'; // Increment version
 
   // --- Button Layout ---
-  final List<String> stringList = [
-    'shft',
-    'X',
-    'Y',
-    'DEG',
-    'AC',
-    'sin',
-    'cos',
-    'tan',
-    'π',
-    'del',
-    'e',
-    '(',
-    ')',
-    '%',
-    '÷',
-    '!',
-    '7',
-    '8',
-    '9',
-    '×',
-    '^',
-    '4',
-    '5',
-    '6',
-    '-',
-    '√',
-    '1',
-    '2',
-    '3',
-    '+',
-    'log',
-    '00',
-    '0',
-    '.',
-    '=',
-  ];
+  // final List<String> stringList = [
+  //   'shft',
+  //   'X',
+  //   'Y',
+  //   'DEG',
+  //   'AC',
+  //   'sin',
+  //   'cos',
+  //   'tan',
+  //   'π',
+  //   'del',
+  //   'e',
+  //   '(',
+  //   ')',
+  //   '%',
+  //   '÷',
+  //   '!',
+  //   '7',
+  //   '8',
+  //   '9',
+  //   '×',
+  //   '^',
+  //   '4',
+  //   '5',
+  //   '6',
+  //   '-',
+  //   '√',
+  //   '1',
+  //   '2',
+  //   '3',
+  //   '+',
+  //   'log',
+  //   '00',
+  //   '0',
+  //   '.',
+  //   '=',
+  // ];
+
+  List<String> get stringList {
+    final settingsState = ref.watch(settingsProvider);
+    final bool enablePhoneKeypad = settingsState.enablePhoneKeypad;
+    final bool changeOperatorOrder = settingsState.changeOperatorOrder;
+
+    // Define number rows
+    final numberRows = enablePhoneKeypad
+        ? [
+            ['1', '2', '3'],
+            ['4', '5', '6'],
+            ['7', '8', '9'],
+          ]
+        : [
+            ['7', '8', '9'],
+            ['4', '5', '6'],
+            ['1', '2', '3'],
+          ];
+
+    // Define operator order
+    final operators =
+        changeOperatorOrder ? ['+', '-', '×', '÷'] : ['÷', '×', '-', '+'];
+
+    return [
+      'shft',
+      'X',
+      'Y',
+      'DEG',
+      'AC',
+      'sin',
+      'cos',
+      'tan',
+      'π',
+      'del',
+      'e',
+      '(',
+      ')',
+      '%',
+      operators[0], // ÷ or +
+      '!',
+      numberRows[0][0], // 7 or 1
+      numberRows[0][1], // 8 or 2
+      numberRows[0][2], // 9 or 3
+      operators[1], // × or -
+      '^',
+      numberRows[1][0], // 4
+      numberRows[1][1], // 5
+      numberRows[1][2], // 6
+      operators[2], // - or ×
+      '√',
+      numberRows[2][0], // 1 or 7
+      numberRows[2][1], // 2 or 8
+      numberRows[2][2], // 3 or 9
+      operators[3], // + or ÷
+      'log',
+      '00',
+      '0',
+      '.',
+      '=',
+    ];
+  }
 
   // --- Initialization & Disposal ---
   @override
