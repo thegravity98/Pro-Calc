@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/cupertino.dart';
-// import 'package:flutter/material.dart' show Material, Colors; // For Overlay message if needed, and default shadow color
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -45,7 +44,6 @@ class _BaseShapePageState extends State<BaseShapePage> {
     {'unit': 'mi', 'label': 'Mile (mi)', 'factor': 0.000621371},
   ];
 
-  // --- Keypad Configuration (Adapted from CalcPage) ---
   final List<List<String>> _keypadRows = [
     ['7', '8', '9'],
     ['4', '5', '6'],
@@ -61,20 +59,13 @@ class _BaseShapePageState extends State<BaseShapePage> {
       _isInputEnabled[param] = false;
       _unitSelections[param] = _getDefaultUnitForParameter(param, _baseUnit);
       _controllers[param] = TextEditingController();
-      // Attach listener only if the field is an input field.
-      // Calculation is triggered by _onKeypadPress or when input field focus changes.
       _controllers[param]!.addListener(() {
         if (_isInputEnabled[param] == true && _activeParameter == param) {
-          _calculate(_activeParameter);
+          _calculate();
         }
       });
     }
-    _activeParameter = widget.parameters.firstWhere(
-        (p) => _isInputEnabled[p] == true,
-        orElse: () => widget.parameters.first);
-    if (_isInputEnabled.values.every((enabled) => !enabled) &&
-        widget.parameters.isNotEmpty) {
-      _isInputEnabled[widget.parameters.first] = true;
+    if (widget.parameters.isNotEmpty) {
       _activeParameter = widget.parameters.first;
     }
   }
@@ -118,7 +109,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
     for (var param in widget.parameters) {
       _unitSelections[param] = _getDefaultUnitForParameter(param, _baseUnit);
     }
-    _calculate(_activeParameter); // Recalculate when base unit changes units
+    _calculate();
   }
 
   void _copyToClipboard(String text) {
@@ -177,20 +168,12 @@ class _BaseShapePageState extends State<BaseShapePage> {
     setState(() {
       for (var param in widget.parameters) {
         _controllers[param]!.clear();
-        // Reset all fields to be non-inputs initially, or based on some default
         _isInputEnabled[param] = false;
         _unitSelections[param] = _getDefaultUnitForParameter(param, _baseUnit);
       }
-      // Set the first parameter as active input by default after clearing
-      if (widget.parameters.isNotEmpty) {
-        _isInputEnabled[widget.parameters.first] = true;
-        _activeParameter = widget.parameters.first;
-      } else {
-        _activeParameter = null;
-      }
-      // _baseUnit = 'm'; // Optionally reset base unit, or keep user's preference
+      _activeParameter =
+          widget.parameters.isNotEmpty ? widget.parameters.first : null;
       _results.clear();
-      // _updateUnitSelections(); // This will be called if baseUnit is reset
     });
   }
 
@@ -201,33 +184,21 @@ class _BaseShapePageState extends State<BaseShapePage> {
       final TextSelection currentSelection = controller.selection;
       final int cursorPos = currentSelection.baseOffset >= 0
           ? currentSelection.baseOffset.clamp(0, currentText.length)
-          : currentText.length; // Fallback to end if selection is invalid
+          : currentText.length;
 
       String newText;
       int newCursorPos = cursorPos;
 
       if (value == '⌫') {
-        // Corresponds to 'del'
         if (cursorPos > 0) {
           newText = currentText.substring(0, cursorPos - 1) +
               currentText.substring(cursorPos);
           newCursorPos = cursorPos - 1;
         } else {
-          newText = currentText; // No change if cursor is at the beginning
+          newText = currentText;
         }
-      } else if (value == '.' &&
-          currentText.substring(0, cursorPos).contains('.')) {
-        // Prevent multiple decimal points in the part of the number before the cursor
-        // More robust checking might be needed if inserting in middle of a number
-        if (!currentText.substring(cursorPos).contains('.') &&
-            !currentText.contains('.')) {
-          newText = currentText.substring(0, cursorPos) +
-              value +
-              currentText.substring(cursorPos);
-          newCursorPos = cursorPos + value.length;
-        } else {
-          return; // Do nothing if decimal already exists
-        }
+      } else if (value == '.' && currentText.contains('.')) {
+        return;
       } else {
         newText = currentText.substring(0, cursorPos) +
             value +
@@ -240,11 +211,10 @@ class _BaseShapePageState extends State<BaseShapePage> {
         selection: TextSelection.collapsed(
             offset: newCursorPos.clamp(0, newText.length)),
       );
-      // _calculate(_activeParameter); // Listener will trigger this
     }
   }
 
-  void _calculate(String? activeParameter) {
+  void _calculate() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
@@ -283,7 +253,6 @@ class _BaseShapePageState extends State<BaseShapePage> {
                 SnackBar(content: Text('Invalid input for $param')),
               );
             }
-            // Clear results for this invalid calculation attempt
             setState(() {
               _results.clear();
               for (var p in widget.parameters) {
@@ -301,9 +270,6 @@ class _BaseShapePageState extends State<BaseShapePage> {
           '[_calculate] Parsed input values (in meters): $inputValuesInMeters');
 
       Map<String, double> calculatedValuesInMeters = {};
-      // --- Calculation logic (switch widget.shapeType) ---
-      // ... (existing calculation logic remains the same)
-      // ... ensure all results are stored in calculatedValuesInMeters
       switch (widget.shapeType) {
         case 'Rectangle':
           double? length, width, height, area, perimeter, volume;
@@ -790,9 +756,8 @@ class _BaseShapePageState extends State<BaseShapePage> {
           }
           break;
       }
-      // --- End of Calculation Logic ---
 
-      _results.clear(); // Clear previous calculation attempt's results map
+      _results.clear();
       calculatedValuesInMeters.forEach((key, value) {
         _results[key] = _numberFormat.format(value);
       });
@@ -804,11 +769,6 @@ class _BaseShapePageState extends State<BaseShapePage> {
         for (var param in widget.parameters) {
           if (!(_isInputEnabled[param] ?? false)) {
             _controllers[param]!.text = _results[param] ?? '';
-          } else if (!inputValuesInMeters.containsKey(param) &&
-              _controllers[param]!.text.isNotEmpty) {
-            // This case means the input field was not used for this calculation, but had text.
-            // If it's not the active parameter, we might want to clear it or leave it.
-            // For now, leave it, as the user might be switching between input sets.
           }
         }
 
@@ -840,61 +800,50 @@ class _BaseShapePageState extends State<BaseShapePage> {
     final units = widget.unitOptions[parameter] ?? [];
     if (units.isEmpty) return const SizedBox.shrink();
 
+    final currentUnit = _unitSelections[parameter] ??
+        _getDefaultUnitForParameter(parameter, _baseUnit);
+    final currentIndex =
+        units.indexWhere((unit) => unit['unit'] == currentUnit);
+    final controller = FixedExtentScrollController(
+        initialItem: currentIndex >= 0 ? currentIndex : 0);
+
     return SizedBox(
       width: 110,
-      child: CupertinoButton(
-        padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
-        onPressed: () {
-          showCupertinoModalPopup(
-            context: context,
-            builder: (context) => CupertinoActionSheet(
-              title: Text('Select Unit for $parameter'),
-              actions: units
-                  .map(
-                    (unit) => CupertinoActionSheetAction(
-                      onPressed: () {
-                        if (!mounted) return;
-                        setState(() {
-                          _unitSelections[parameter] = unit['unit'];
-                          _calculate(
-                              _activeParameter); // Recalculate if unit of a result changes
-                        });
-                        Navigator.pop(context);
-                      },
-                      child: Text(unit['label'] ?? unit['unit']),
-                    ),
-                  )
-                  .toList(),
-              cancelButton: CupertinoActionSheetAction(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+      height: 100,
+      child: CupertinoPicker(
+        scrollController: controller,
+        itemExtent: 28,
+        magnification: 1.1,
+        squeeze: 1.2,
+        looping: true,
+        onSelectedItemChanged: (index) {
+          if (!mounted) return;
+          setState(() {
+            _unitSelections[parameter] = units[index]['unit'];
+            _calculate();
+          });
+        },
+        children: units.asMap().entries.map((entry) {
+          final index = entry.key;
+          final unit = entry.value;
+          final isActive = index == currentIndex;
+          return Center(
+            child: Text(
+              unit['label'] ?? unit['unit'],
+              style: TextStyle(
+                fontSize: 14,
+                fontFamily: 'Inter',
+                color: CupertinoColors.activeBlue.withOpacity(
+                  isActive
+                      ? 1.0
+                      : (index == currentIndex - 2 || index == currentIndex + 2
+                          ? 0.4
+                          : 0.6),
+                ),
               ),
             ),
           );
-        },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Text(
-                _unitSelections[parameter] ??
-                    _getDefaultUnitForParameter(parameter, _baseUnit),
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: CupertinoColors.activeBlue,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 2),
-            const Icon(
-              FluentIcons.chevron_down_20_regular,
-              size: 16,
-              color: CupertinoColors.activeBlue,
-            ),
-          ],
-        ),
+        }).toList(),
       ),
     );
   }
@@ -902,15 +851,12 @@ class _BaseShapePageState extends State<BaseShapePage> {
   Widget _buildBaseUnitPicker() {
     return Container(
       height: 44,
-      margin: const EdgeInsets.symmetric(
-          vertical: 8.0, horizontal: 4.0), // Added horizontal margin
+      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: CupertinoTheme.of(context)
-            .scaffoldBackgroundColor, // Use theme color
+        color: CupertinoTheme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: CupertinoColors.systemGrey4, width: 0.5), // Softer border
+        border: Border.all(color: CupertinoColors.systemGrey4, width: 0.5),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -921,7 +867,6 @@ class _BaseShapePageState extends State<BaseShapePage> {
               fontSize: 16,
               fontWeight: FontWeight.w600,
               fontFamily: 'Inter',
-              // color: CupertinoColors.black, // Will adapt to theme
             ),
           ),
           GestureDetector(
@@ -961,7 +906,6 @@ class _BaseShapePageState extends State<BaseShapePage> {
                             setState(() {
                               _baseUnit = _baseUnitOptions[index]['unit'];
                               _updateUnitSelections();
-                              // _calculate(_activeParameter); // _updateUnitSelections now calls _calculate
                             });
                           },
                           scrollController: FixedExtentScrollController(
@@ -1059,16 +1003,15 @@ class _BaseShapePageState extends State<BaseShapePage> {
         } catch (e) {
           debugPrint(
               'Error converting result value for $parameter to display unit: $e');
-          displayText = "Error"; // Display error if conversion fails
+          displayText = "Error";
         }
       } else {
-        // For input, just format the number if it's a valid number
         try {
           final doubleValue =
               double.parse(valueInController.replaceAll(',', ''));
           displayText = _numberFormat.format(doubleValue);
         } catch (e) {
-          displayText = valueInController; // If not a number, show as is
+          displayText = valueInController;
         }
       }
     }
@@ -1076,61 +1019,27 @@ class _BaseShapePageState extends State<BaseShapePage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.center, // Center items vertically
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: CupertinoCheckbox(
-              value: isInput,
-              shape: const CircleBorder(),
-              activeColor: currentTheme.primaryColor,
-              onChanged: (value) {
-                if (value != null) {
-                  if (!mounted) return;
-                  setState(() {
-                    // Only allow one input at a time (optional, but common for this UI type)
-                    if (value) {
-                      _isInputEnabled.forEach((key, _) {
-                        _isInputEnabled[key] = false;
-                      });
-                      _isInputEnabled[parameter] = true;
-                      _activeParameter = parameter;
-                      _controllers[parameter]!
-                          .clear(); // Clear when it becomes input
-                    } else {
-                      // If unchecking, and it was the active parameter, find a new active one or none
-                      _isInputEnabled[parameter] = false;
-                      // if (_activeParameter == parameter) {
-                      //   _activeParameter = widget.parameters.firstWhere(
-                      //       (p) => _isInputEnabled[p]!,
-                      //       orElse: () =>
-                      //           null); // No active parameter if all are outputs
-                      // }
-                    }
-                    _calculate(_activeParameter);
-                  });
-                }
-              },
-            ),
-          ),
           Expanded(
             child: GestureDetector(
               onTap: () {
                 if (!mounted) return;
-                // When tapping a card, if it's not already an input, make it the sole input.
-                // If it is an input, it remains the active input for the keypad.
                 setState(() {
-                  if (!_isInputEnabled[parameter]!) {
-                    _isInputEnabled.forEach((key, _) {
-                      _isInputEnabled[key] = false;
-                    });
-                    _isInputEnabled[parameter] = true;
-                    _controllers[parameter]!
-                        .clear(); // Clear previous output value
+                  _isInputEnabled[parameter] =
+                      !(_isInputEnabled[parameter] ?? false);
+                  if (_isInputEnabled[parameter]!) {
+                    _controllers[parameter]!.clear();
+                    _activeParameter = parameter;
+                  } else if (_activeParameter == parameter) {
+                    _activeParameter = _isInputEnabled.entries
+                        .firstWhere(
+                            (entry) => entry.value && entry.key != parameter,
+                            orElse: () =>
+                                MapEntry(widget.parameters.first, false))
+                        .key;
                   }
-                  _activeParameter = parameter;
-                  _calculate(_activeParameter);
+                  _calculate();
                 });
               },
               child: Container(
@@ -1140,16 +1049,15 @@ class _BaseShapePageState extends State<BaseShapePage> {
                   color: currentTheme.barBackgroundColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _activeParameter == parameter && isInput
+                    color: _isInputEnabled[parameter]!
                         ? currentTheme.primaryColor
                         : CupertinoColors.systemGrey4,
-                    width: _activeParameter == parameter && isInput ? 1.5 : 1.0,
+                    width: _isInputEnabled[parameter]! ? 1.5 : 1.0,
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize:
-                      MainAxisSize.min, // Important for intrinsic height
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1157,11 +1065,10 @@ class _BaseShapePageState extends State<BaseShapePage> {
                         Expanded(
                           child: Text(
                             parameter,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w500,
-                              color: Color.fromRGBO(
-                                  20, 20, 20, 1), // Use labelColor
+                              color: Color.fromRGBO(20, 20, 20, 1),
                             ),
                           ),
                         ),
@@ -1172,7 +1079,6 @@ class _BaseShapePageState extends State<BaseShapePage> {
                             padding: EdgeInsets.zero,
                             onPressed: () => _copyToClipboard(
                                 '$displayText $currentDisplayUnitSymbol'),
-                            // minimumSize: Size(0, 0),
                             child: Icon(
                               FluentIcons.copy_20_regular,
                               size: 18,
@@ -1187,7 +1093,6 @@ class _BaseShapePageState extends State<BaseShapePage> {
                         children: [
                           Expanded(
                             child: AbsorbPointer(
-                              // Makes TextField non-interactive for direct input
                               child: CupertinoTextField(
                                 controller: _controllers[parameter],
                                 placeholder: 'Enter value',
@@ -1255,16 +1160,13 @@ class _BaseShapePageState extends State<BaseShapePage> {
               padding: const EdgeInsets.only(left: 8.0),
               child: _buildUnitPicker(parameter),
             )
-          else if (!isInput && unitsForParameter.isNotEmpty)
-            SizedBox(width: 110 + 8.0)
           else
-            SizedBox(width: 110 + 8.0),
+            const SizedBox(width: 118.0),
         ],
       ),
     );
   }
 
-  // --- Adapted Button Styling and Building Logic from CalcPage ---
   Color _getButtonBackgroundColor(BuildContext context, String text) {
     final bool isDarkMode =
         CupertinoTheme.of(context).brightness == Brightness.dark;
@@ -1275,8 +1177,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
             : CupertinoColors.systemRed.withOpacity(0.3);
       case 'del':
         return isDarkMode
-            ? const Color.fromRGBO(
-                45, 45, 45, 1) // Darker grey for special actions
+            ? const Color.fromRGBO(45, 45, 45, 1)
             : const Color.fromRGBO(220, 220, 225, 1);
       case '0':
       case '1':
@@ -1291,9 +1192,9 @@ class _BaseShapePageState extends State<BaseShapePage> {
       case '00':
       case '.':
         return isDarkMode
-            ? const Color.fromRGBO(30, 30, 30, 1) // Dark grey for numbers
-            : const Color.fromRGBO(240, 240, 245, 1); // Light grey for numbers
-      default: // Should not happen with current button set
+            ? const Color.fromRGBO(30, 30, 30, 1)
+            : const Color.fromRGBO(240, 240, 245, 1);
+      default:
         return isDarkMode
             ? CupertinoColors.systemGrey5
             : CupertinoColors.systemGrey6;
@@ -1301,10 +1202,9 @@ class _BaseShapePageState extends State<BaseShapePage> {
   }
 
   Color _getButtonForegroundColor(BuildContext context, String text) {
-    // final bool isDarkMode = CupertinoTheme.of(context).brightness == Brightness.dark;
     switch (text) {
       case 'AC':
-        return CupertinoColors.white; // Or a color that contrasts with red
+        return CupertinoColors.white;
       case 'del':
         return CupertinoColors.systemRed;
       default:
@@ -1313,10 +1213,9 @@ class _BaseShapePageState extends State<BaseShapePage> {
   }
 
   double _getButtonTextSize(String text, double btnSize) {
-    // Simplified from CalcPage, as we don't have complex functions
     if (text == '00') return btnSize * 0.36;
     if (text == 'AC') return btnSize * 0.38;
-    return btnSize * 0.4; // Default for digits and dot
+    return btnSize * 0.4;
   }
 
   Widget _buildKeypadButton(BuildContext context, String text, double btnSize,
@@ -1330,8 +1229,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
     Widget content;
     if (text == 'del') {
       content = Icon(
-        FluentIcons
-            .backspace_24_regular, // Using regular for consistency, filled is also an option
+        FluentIcons.backspace_24_regular,
         size: btnSize * 0.45,
         color: fgColor,
       );
@@ -1341,13 +1239,13 @@ class _BaseShapePageState extends State<BaseShapePage> {
         style: TextStyle(
           fontSize: _getButtonTextSize(text, btnSize),
           color: fgColor,
-          fontWeight: FontWeight.w500, // Standard weight
+          fontWeight: FontWeight.w500,
           fontFamily: 'Inter',
         ),
       );
     }
 
-    final bool applyShadow = true; // All keypad buttons have shadow
+    final bool applyShadow = true;
 
     VoidCallback actualOnPressed;
     if (onPressedOverride != null) {
@@ -1362,20 +1260,18 @@ class _BaseShapePageState extends State<BaseShapePage> {
 
     return Container(
       width: btnSize,
-      height: height ?? screenHeight * 0.065, // Standard button height
-      margin: EdgeInsets.all(btnSize * 0.035), // Slightly reduced margin
+      height: height ?? screenHeight * 0.065,
+      margin: EdgeInsets.all(btnSize * 0.035),
       decoration: BoxDecoration(
         color: buttonColor,
-        borderRadius: BorderRadius.circular(btnSize * 0.25), // More rounded
+        borderRadius: BorderRadius.circular(btnSize * 0.25),
         boxShadow: applyShadow
             ? [
                 BoxShadow(
-                  color: CupertinoColors.systemGrey
-                      .withOpacity(0.15), // Softer shadow
+                  color: CupertinoColors.systemGrey.withOpacity(0.15),
                   spreadRadius: 0.5,
                   blurRadius: 2,
-                  offset:
-                      const Offset(0, 1.5), // Slightly more pronounced offset
+                  offset: const Offset(0, 1.5),
                 ),
               ]
             : null,
@@ -1393,31 +1289,25 @@ class _BaseShapePageState extends State<BaseShapePage> {
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final safeAreaPadding = mediaQuery.padding;
-    final effectiveScreenWidth = screenWidth -
-        safeAreaPadding.left -
-        safeAreaPadding.right -
-        (16 * 2); // Account for page padding
+    final effectiveScreenWidth =
+        screenWidth - safeAreaPadding.left - safeAreaPadding.right - (16 * 2);
 
-    final double approxButtonSpacing =
-        screenWidth * 0.02; // Spacing between buttons
-    // For a 4-column layout (3 digit columns + 1 side button column)
+    final double approxButtonSpacing = screenWidth * 0.02;
     final double btnSize =
         ((effectiveScreenWidth - (3 * approxButtonSpacing)) / 4)
             .clamp(50.0, 85.0);
     final double singleButtonHeight =
         MediaQuery.of(context).size.height * 0.065;
-    final double doubleButtonHeight = (2 * singleButtonHeight) +
-        (btnSize * 0.035 * 2); // Height of two buttons + one margin
+    final double doubleButtonHeight =
+        (2 * singleButtonHeight) + (btnSize * 0.035 * 2);
 
     return Padding(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 4.0), // Match base unit picker
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 4x3 Digit Grid
           Expanded(
-            flex: 3, // Takes 3 parts of the width
+            flex: 3,
             child: Column(
               children: _keypadRows.map((row) {
                 return Row(
@@ -1430,11 +1320,9 @@ class _BaseShapePageState extends State<BaseShapePage> {
               }).toList(),
             ),
           ),
-          // Spacer
           SizedBox(width: approxButtonSpacing),
-          // AC and Del Column
           Expanded(
-            flex: 1, // Takes 1 part of the width
+            flex: 1,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1465,13 +1353,10 @@ class _BaseShapePageState extends State<BaseShapePage> {
       ),
       child: SafeArea(
         child: Column(
-          // Main layout is now a Column
           children: [
             Expanded(
-              // Parameter cards take available space and scroll
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16)
-                    .copyWith(bottom: 8), // Reduce bottom padding
+                padding: const EdgeInsets.all(16).copyWith(bottom: 8),
                 child: Column(
                   children: [
                     ...widget.parameters
@@ -1480,11 +1365,10 @@ class _BaseShapePageState extends State<BaseShapePage> {
                 ),
               ),
             ),
-            // Base Unit Picker and Keypad at the bottom
             _buildBaseUnitPicker(),
             const SizedBox(height: 8),
             _buildCustomKeypad(context),
-            const SizedBox(height: 8), // Some padding at the very bottom
+            const SizedBox(height: 8),
           ],
         ),
       ),
