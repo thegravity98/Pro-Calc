@@ -24,7 +24,8 @@ class BaseShapePage extends StatefulWidget {
   State<BaseShapePage> createState() => _BaseShapePageState();
 }
 
-class _BaseShapePageState extends State<BaseShapePage> {
+class _BaseShapePageState extends State<BaseShapePage>
+    with TickerProviderStateMixin {
   final Map<String, bool> _isInputEnabled = {};
   final Map<String, String> _unitSelections = {};
   final Map<String, TextEditingController> _controllers = {};
@@ -52,6 +53,11 @@ class _BaseShapePageState extends State<BaseShapePage> {
   ];
   final List<String> _sideButtons = ['AC', 'del'];
 
+  // Swipe animation controllers
+  final Map<String, AnimationController> _swipeControllers = {};
+  final Map<String, Animation<double>> _swipeAnimations = {};
+  final Map<String, double> _swipeOffsets = {};
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +70,18 @@ class _BaseShapePageState extends State<BaseShapePage> {
           _calculate();
         }
       });
+      // Initialize swipe animation controller for each parameter
+      _swipeControllers[param] = AnimationController(
+        duration: const Duration(milliseconds: 200),
+        vsync: this,
+      );
+      _swipeOffsets[param] = 0.0;
+      _swipeAnimations[param] = Tween<double>(begin: 0.0, end: 0.0).animate(
+        CurvedAnimation(
+          parent: _swipeControllers[param]!,
+          curve: Curves.easeInOut,
+        ),
+      );
     }
     if (widget.parameters.isNotEmpty) {
       _activeParameter = widget.parameters.first;
@@ -75,6 +93,9 @@ class _BaseShapePageState extends State<BaseShapePage> {
     _debounce?.cancel();
     for (var controller in _controllers.values) {
       controller.dispose();
+    }
+    for (var swipeController in _swipeControllers.values) {
+      swipeController.dispose();
     }
     super.dispose();
   }
@@ -150,7 +171,8 @@ class _BaseShapePageState extends State<BaseShapePage> {
                     },
                     child: Text(
                       '${entry.value['expression']} = ${entry.value['result']}',
-                      style: const TextStyle(fontSize: 16),
+                      style: const TextStyle(
+                          fontSize: 16, fontFamily: 'Reddit Sans'),
                     ),
                   ),
                 )
@@ -832,7 +854,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
               unit['label'] ?? unit['unit'],
               style: TextStyle(
                 fontSize: 14,
-                fontFamily: 'Inter',
+                fontFamily: 'Reddit Sans',
                 color: CupertinoColors.activeBlue.withOpacity(
                   isActive
                       ? 1.0
@@ -866,7 +888,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              fontFamily: 'Inter',
+              fontFamily: 'Reddit Sans',
             ),
           ),
           GestureDetector(
@@ -892,7 +914,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
-                            fontFamily: 'Inter',
+                            fontFamily: 'Reddit Sans',
                           ),
                         ),
                       ),
@@ -918,7 +940,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
                                       unit['label'],
                                       style: const TextStyle(
                                         fontSize: 18,
-                                        fontFamily: 'Inter',
+                                        fontFamily: 'Reddit Sans',
                                       ),
                                     ),
                                   ))
@@ -931,6 +953,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
+                            fontFamily: 'Reddit Sans',
                             color: CupertinoColors.activeBlue,
                           ),
                         ),
@@ -950,8 +973,8 @@ class _BaseShapePageState extends State<BaseShapePage> {
                       'Meter (m)',
                   style: const TextStyle(
                     fontSize: 16,
+                    fontFamily: 'Reddit Sans',
                     color: CupertinoColors.activeBlue,
-                    fontFamily: 'Inter',
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -1016,140 +1039,229 @@ class _BaseShapePageState extends State<BaseShapePage> {
       }
     }
 
+    const double maxSwipeDistance = 60.0; // Distance to reveal the copy button
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: GestureDetector(
-              onTap: () {
-                if (!mounted) return;
-                setState(() {
-                  _isInputEnabled[parameter] =
-                      !(_isInputEnabled[parameter] ?? false);
-                  if (_isInputEnabled[parameter]!) {
-                    _controllers[parameter]!.clear();
-                    _activeParameter = parameter;
-                  } else if (_activeParameter == parameter) {
-                    _activeParameter = _isInputEnabled.entries
-                        .firstWhere(
-                            (entry) => entry.value && entry.key != parameter,
-                            orElse: () =>
-                                MapEntry(widget.parameters.first, false))
-                        .key;
-                  }
-                  _calculate();
-                });
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: currentTheme.barBackgroundColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _isInputEnabled[parameter]!
-                        ? currentTheme.primaryColor
-                        : CupertinoColors.systemGrey4,
-                    width: _isInputEnabled[parameter]! ? 1.5 : 1.0,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
+            child: Stack(
+              children: [
+                // The card itself, which can be swiped
+                AnimatedBuilder(
+                  animation: _swipeAnimations[parameter]!,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(_swipeAnimations[parameter]!.value, 0),
+                      child: child,
+                    );
+                  },
+                  child: GestureDetector(
+                    onTap: () {
+                      if (!mounted) return;
+                      setState(() {
+                        _isInputEnabled[parameter] =
+                            !(_isInputEnabled[parameter] ?? false);
+                        if (_isInputEnabled[parameter]!) {
+                          _controllers[parameter]!.clear();
+                          _activeParameter = parameter;
+                        } else if (_activeParameter == parameter) {
+                          _activeParameter = _isInputEnabled.entries
+                              .firstWhere(
+                                  (entry) =>
+                                      entry.value && entry.key != parameter,
+                                  orElse: () =>
+                                      MapEntry(widget.parameters.first, false))
+                              .key;
+                        }
+                        _calculate();
+                      });
+                    },
+                    onHorizontalDragUpdate: (!isInput &&
+                            displayText.isNotEmpty &&
+                            displayText != "Error")
+                        ? (details) {
+                            setState(() {
+                              double newOffset =
+                                  (_swipeOffsets[parameter]! + details.delta.dx)
+                                      .clamp(-maxSwipeDistance, 0.0);
+                              _swipeOffsets[parameter] = newOffset;
+                              _swipeAnimations[parameter] = Tween<double>(
+                                begin: _swipeAnimations[parameter]!.value,
+                                end: newOffset,
+                              ).animate(CurvedAnimation(
+                                parent: _swipeControllers[parameter]!,
+                                curve: Curves.easeInOut,
+                              ));
+                              _swipeControllers[parameter]!.forward(from: 0.0);
+                            });
+                          }
+                        : null,
+                    onHorizontalDragEnd: (!isInput &&
+                            displayText.isNotEmpty &&
+                            displayText != "Error")
+                        ? (details) {
+                            setState(() {
+                              // Snap to either fully open or fully closed
+                              if (_swipeOffsets[parameter]! <
+                                  -maxSwipeDistance / 2) {
+                                _swipeOffsets[parameter] = -maxSwipeDistance;
+                              } else {
+                                _swipeOffsets[parameter] = 0.0;
+                              }
+                              _swipeAnimations[parameter] = Tween<double>(
+                                begin: _swipeAnimations[parameter]!.value,
+                                end: _swipeOffsets[parameter]!,
+                              ).animate(CurvedAnimation(
+                                parent: _swipeControllers[parameter]!,
+                                curve: Curves.easeInOut,
+                              ));
+                              _swipeControllers[parameter]!.forward(from: 0.0);
+                            });
+                          }
+                        : null,
+                    child: Container(
+                      width:
+                          double.infinity, // Ensure the card takes full width
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: currentTheme.barBackgroundColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _isInputEnabled[parameter]!
+                              ? currentTheme.primaryColor
+                              : CupertinoColors.systemGrey4,
+                          width: _isInputEnabled[parameter]! ? 1.5 : 1.0,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
                             parameter,
                             style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w500,
+                              fontFamily: 'Reddit Sans',
                               color: Color.fromRGBO(20, 20, 20, 1),
                             ),
                           ),
-                        ),
-                        if (!isInput &&
-                            displayText.isNotEmpty &&
-                            displayText != "Error")
-                          CupertinoButton(
-                            padding: EdgeInsets.zero,
-                            onPressed: () => _copyToClipboard(
-                                '$displayText $currentDisplayUnitSymbol'),
-                            child: Icon(
-                              FluentIcons.copy_20_regular,
-                              size: 18,
-                              color: currentTheme.primaryColor,
-                            ),
-                          ),
-                      ],
-                    ),
-                    SizedBox(height: isInput ? 4 : 8),
-                    if (isInput)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AbsorbPointer(
-                              child: CupertinoTextField(
-                                controller: _controllers[parameter],
-                                placeholder: 'Enter value',
-                                textAlign: TextAlign.left,
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w400,
-                                  fontFamily: 'Inter',
-                                  color: currentTheme.textTheme.textStyle.color,
+                          SizedBox(height: isInput ? 4 : 8),
+                          if (isInput)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AbsorbPointer(
+                                    child: CupertinoTextField(
+                                      controller: _controllers[parameter],
+                                      placeholder: 'Enter value',
+                                      textAlign: TextAlign.left,
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w400,
+                                        fontFamily: 'Reddit Sans',
+                                        color: currentTheme
+                                            .textTheme.textStyle.color,
+                                      ),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
+                                      readOnly: true,
+                                      showCursor: true,
+                                      cursorColor: currentTheme.primaryColor,
+                                      decoration: const BoxDecoration(),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8.0),
+                                    ),
+                                  ),
                                 ),
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                readOnly: true,
-                                showCursor: true,
-                                cursorColor: currentTheme.primaryColor,
-                                decoration: const BoxDecoration(),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _baseUnit,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontFamily: 'Reddit Sans',
+                                    color: currentTheme
+                                        .textTheme.textStyle.color
+                                        ?.withOpacity(0.7),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Text(
+                              displayText.isNotEmpty
+                                  ? (displayText == "Error"
+                                      ? "Error"
+                                      : '$displayText $currentDisplayUnitSymbol')
+                                  : '-',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Reddit Sans',
+                                color: displayText == "Error"
+                                    ? CupertinoColors.systemRed
+                                    : (displayText.isNotEmpty
+                                        ? currentTheme.textTheme.textStyle.color
+                                        : currentTheme
+                                            .textTheme.textStyle.color!
+                                            .withOpacity(0.5)),
+                              ),
+                              textAlign: TextAlign.left,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Background for the copy button, only visible when swiped
+                if (!isInput &&
+                    displayText.isNotEmpty &&
+                    displayText != "Error")
+                  AnimatedBuilder(
+                    animation: _swipeAnimations[parameter]!,
+                    builder: (context, child) {
+                      // Calculate opacity based on swipe offset
+                      double opacity = (-_swipeAnimations[parameter]!.value /
+                              maxSwipeDistance)
+                          .clamp(0.0, 1.0);
+                      return Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 8,
+                        child: Opacity(
+                          opacity: opacity,
+                          child: Container(
+                            width: maxSwipeDistance,
+                            color: CupertinoColors.activeBlue,
+                            child: Center(
+                              child: IconButton(
+                                icon: const Icon(
+                                  FluentIcons.copy_20_regular,
+                                  color: CupertinoColors.white,
+                                  size: 24,
+                                ),
+                                onPressed: opacity == 1.0
+                                    ? () {
+                                        _copyToClipboard(
+                                            '$displayText $currentDisplayUnitSymbol');
+                                        // Animate the card back to its original position after copying
+                                        _swipeControllers[parameter]!.reverse();
+                                        _swipeOffsets[parameter] = 0.0;
+                                      }
+                                    : null,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _baseUnit,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontFamily: 'Inter',
-                              color: currentTheme.textTheme.textStyle.color
-                                  ?.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      Text(
-                        displayText.isNotEmpty
-                            ? (displayText == "Error"
-                                ? "Error"
-                                : '$displayText $currentDisplayUnitSymbol')
-                            : '-',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Inter',
-                          color: displayText == "Error"
-                              ? CupertinoColors.systemRed
-                              : (displayText.isNotEmpty
-                                  ? currentTheme.textTheme.textStyle.color
-                                  : currentTheme.textTheme.textStyle.color!
-                                      .withOpacity(0.5)),
                         ),
-                        textAlign: TextAlign.left,
-                      ),
-                  ],
-                ),
-              ),
+                      );
+                    },
+                  ),
+              ],
             ),
           ),
           if (!isInput &&
@@ -1240,7 +1352,7 @@ class _BaseShapePageState extends State<BaseShapePage> {
           fontSize: _getButtonTextSize(text, btnSize),
           color: fgColor,
           fontWeight: FontWeight.w500,
-          fontFamily: 'Inter',
+          fontFamily: 'Reddit Sans',
         ),
       );
     }
@@ -1344,7 +1456,8 @@ class _BaseShapePageState extends State<BaseShapePage> {
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: Text(widget.title),
+        middle: Text(widget.title,
+            style: const TextStyle(fontFamily: 'Reddit Sans')),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: _showHistory,
